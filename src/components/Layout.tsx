@@ -98,7 +98,10 @@ function SearchMenu() {
       <AnimatePresence>{open && (
         <Pop className="w-[min(20rem,calc(100vw-2rem))]">
           <input autoFocus className="input" placeholder="Search a city, station or page…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search"
-            onKeyDown={(e) => { if (e.key === 'Enter' && q.trim()) (hits.length && q.trim().length > 2 && hits.length < NAV.length ? go(hits[0][0]) : place()) }} />
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || !q.trim()) return
+              if (hits.length && q.trim().length > 2 && hits.length < NAV.length) go(hits[0][0]); else place()
+            }} />
           <ul className="mt-1.5 max-h-72 overflow-auto">
             {q.trim() && <li><button className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-hover flex items-center gap-2" onClick={place}><MapIcon size={14} className="text-ok" />Find “{q.trim()}” on the map</button></li>}
             {hits.map(([to, l, I]) => <li key={to}><button className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-hover flex items-center gap-2" onClick={() => go(to)}><I size={14} className="text-muted" />{l}</button></li>)}

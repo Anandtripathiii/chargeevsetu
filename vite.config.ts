@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 
 // Code used only by the admin app (src/admin/**) is emitted under /admin/assets/, which middleware.ts protects,
 // so normal visitors never download it. Shared code (UI kit, data helpers) stays in /assets/.
-const ADMIN = /[\/]src[\/]admin[\/]|[\/]admin[\/]index\.html/
+const ADMIN = /\/src\/admin\/|\/admin\/index\.html/ // Vite normalises module ids to forward slashes
 const adminOnly = (c: { facadeModuleId: string | null; moduleIds: string[] }) =>
   (c.facadeModuleId != null && ADMIN.test(c.facadeModuleId)) || (c.moduleIds.length > 0 && c.moduleIds.every((id) => ADMIN.test(id)))
 

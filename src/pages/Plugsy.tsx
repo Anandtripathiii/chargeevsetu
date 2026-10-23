@@ -15,6 +15,8 @@ import { fmt } from '../lib/format'
 const TABS = [['find', 'Find a charger'], ['bookings', 'My bookings'], ['host', 'Become a host'], ['install', 'Get one installed']] as const
 type Tab = (typeof TABS)[number][0]
 const COMMISSION = 0.15
+/** value for <input type=datetime-local>, in the visitor's local time */
+const localInput = (t: number) => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) }
 
 const STATUS: Record<PlugStatus, [string, string]> = {
   free: ['Free', 'text-ok border-ok/30 bg-ok/10'], busy: ['Busy', 'text-warn border-warn/30 bg-warn/10'],
@@ -68,7 +70,7 @@ function Find() {
         <span className="text-xs text-muted flex items-center gap-1 ml-auto"><span className="w-2 h-2 rounded-full bg-ok animate-pulse" />Status updates live</span>
       </div>
       {!list ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-48" />)}</div> : !rows.length
-        ? <p className="text-sm text-muted">No home chargers listed here yet. <button className="text-accent" onClick={() => location.assign('?tab=host')}>Be the first host</button>.</p>
+        ? <p className="text-sm text-muted">No home chargers listed here yet. <Link className="text-accent" to="/plugsy?tab=host">Be the first host</Link>.</p>
         : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map(({ c, d }) => (
@@ -94,7 +96,7 @@ function Find() {
 
 function BookDialog({ c, onClose }: { c: HomeCharger | null; onClose: () => void }) {
   const [step, setStep] = useState<'slot' | 'pay' | 'done'>('slot')
-  const [start, setStart] = useState(() => new Date(Date.now() + 3600e3).toISOString().slice(0, 16))
+  const [start, setStart] = useState(() => localInput(Date.now() + 3600e3))
   const [hours, setHours] = useState(2)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Booking | null>(null)
@@ -111,7 +113,7 @@ function BookDialog({ c, onClose }: { c: HomeCharger | null; onClose: () => void
     <Modal open={!!c} onClose={onClose} title={step === 'done' ? 'Booking confirmed' : step === 'pay' ? 'Demo payment' : `Book ${c.title}`}>
       {step === 'slot' && (
         <div className="space-y-4">
-          <label className="block"><span className="text-xs text-muted">Start time</span><input type="datetime-local" className="input mt-1" value={start} min={new Date().toISOString().slice(0, 16)} onChange={(e) => setStart(e.target.value)} /></label>
+          <label className="block"><span className="text-xs text-muted">Start time</span><input type="datetime-local" className="input mt-1" value={start} min={localInput(Date.now())} onChange={(e) => setStart(e.target.value)} /></label>
           <label className="block"><span className="text-xs text-muted">Duration</span>
             <select className="input mt-1" value={hours} onChange={(e) => setHours(Number(e.target.value))}>{[1, 2, 3, 4, 6, 8].map((h) => <option key={h} value={h}>{h} hour{h > 1 ? 's' : ''}</option>)}</select>
           </label>

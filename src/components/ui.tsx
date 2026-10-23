@@ -87,12 +87,12 @@ export function PageSkeleton() {
   )
 }
 
-/** Lead under the shell's page heading: the page's question in white, the explanation in grey. */
+/** Page heading: the page's question, then a plain-language explanation in grey. */
 export function PageHeader({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
     <Container className="pb-6">
-      <h2 className="text-lg sm:text-xl font-medium">{title}</h2>
-      {children && <div className="mt-2 text-sm sm:text-[15px] text-muted max-w-3xl leading-relaxed">{children}</div>}
+      <h1 className="rise text-[26px] sm:text-[34px] leading-tight font-semibold tracking-[-0.035em]">{title}</h1>
+      {children && <div className="rise mt-2 text-sm sm:text-[15px] text-muted max-w-3xl leading-relaxed">{children}</div>}
     </Container>
   )
 }
