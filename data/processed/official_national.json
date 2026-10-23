@@ -1,0 +1,24 @@
+{
+  "ev_stock_total": 10023396,
+  "ev_stock_as_of": "2026-07-26",
+  "public_chargers_total": 52718,
+  "public_chargers_as_of": "2026-03-31",
+  "fast_car_chargers": 16561,
+  "ev_penetration_fy20": 0.71,
+  "ev_penetration_fy26": 8.26,
+  "annual_registrations": {
+    "2018": 130254,
+    "2019": 166822,
+    "2020": 124654,
+    "2021": 331466,
+    "2022": 1024808,
+    "2023": 1530000,
+    "2024": 1950000,
+    "2025": 2300000
+  },
+  "annual_registrations_secondary_years": [
+    2023,
+    2024,
+    2025
+  ]
+}

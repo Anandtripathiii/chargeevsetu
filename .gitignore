@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.venv
+__pycache__
+.env
+data/raw/**/*.json
+!data/raw/**/README.md
+
+# local Lighthouse reports
+.lighthouse
+# unused download (not read by the pipeline)
+data/raw/naturalearth/
+# large re-downloadable inputs (see README "Refresh the data"); public/data/ stays committed so the site works
+data/raw/worldpop/
+data/raw/boundaries/

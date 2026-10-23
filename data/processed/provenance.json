@@ -1,0 +1,160 @@
+{
+  "official_chargers": {
+    "name": "State-wise public EV charging stations (Ministry of Power inputs, PIB annexure)",
+    "url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/aug/doc202581598101.pdf",
+    "licence": "Government of India (GODL / public record)",
+    "records": 36,
+    "source_type": "real",
+    "total": 29277,
+    "as_of": "Aug 2025",
+    "cleaning": "Parsed from PDF; state names normalised; row total checked against printed total (29,277).",
+    "limitations": "Counts stations, not connectors. Telangana/Andhra split as reported.",
+    "fetched": "2026-10-23"
+  },
+  "osm_chargers": {
+    "name": "OpenStreetMap charging stations (amenity=charging_station)",
+    "url": "https://overpass-api.de / maps.mail.ru Overpass mirror",
+    "licence": "ODbL 1.0",
+    "records": 608,
+    "source_type": "real",
+    "cleaning": "Nodes/ways/relations reduced to a point (way centre); kept operator, sockets, capacity, power tags.",
+    "limitations": "Volunteer-mapped; coverage varies by city. Many operator stations are not yet in OSM.",
+    "fetched": "2026-10-23"
+  },
+  "official_ev_state": {
+    "name": "State-wise registered EVs as on 03-08-2023 (VAHAN, Lok Sabha reply via PIB)",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=1947389",
+    "licence": "Government of India (public record)",
+    "records": 34,
+    "source_type": "real",
+    "total": 2830565,
+    "as_of": "2023-08-03",
+    "cleaning": "Parsed from press-release HTML; names normalised; total checked (28,30,565).",
+    "limitations": "Telangana and Lakshadweep not reported (Telangana not on central VAHAN then).",
+    "fetched": "2026-10-23"
+  },
+  "official_national": {
+    "name": "National EV stock & charger totals (Lok Sabha USQ 1956 & 453, July 2026)",
+    "url": "https://sansad.in/getFile/lsapps/loksabhaquestions/annex/188/AU1956_NQ8q4A.pdf ; https://sansad.in/getFile/lsapps/loksabhaquestions/annex/188/AU453_QsLfVk.pdf",
+    "licence": "Government of India (public record)",
+    "source_type": "real",
+    "cleaning": "Values parsed from reply text.",
+    "limitations": "BHEL-portal charger total has no state split; we scale the 2025 state split to it.",
+    "fetched": "2026-10-23"
+  },
+  "annual_registrations": {
+    "name": "Year-wise EV registrations 2018-2025",
+    "url": "PIB 1947389 (2018-22); FADA / IESA reporting of VAHAN (2023: 1.53M, 2024: 1.95M, 2025: 2.3M)",
+    "licence": "Public record / press",
+    "source_type": "real",
+    "limitations": "2023-25 are rounded figures from secondary reports of VAHAN, not the dashboard itself.",
+    "fetched": "2026-10-23"
+  },
+  "ocm": {
+    "name": "Open Charge Map (countrycode=IN)",
+    "url": "https://openchargemap.org/site/develop/api",
+    "licence": "CC BY 4.0",
+    "records": 0,
+    "source_type": "real",
+    "status": "skipped: OCM_API_KEY not set",
+    "limitations": "Add a free key to .env and re-run `python pipeline/run_all.py` to merge it.",
+    "fetched": "2026-10-23"
+  },
+  "vahan_manual": {
+    "name": "VAHAN dashboard manual exports (state x vehicle class x year, fuel = Electric)",
+    "url": "https://vahan.parivahan.gov.in/vahan4dashboard/",
+    "licence": "Government of India (public dashboard)",
+    "records": 0,
+    "source_type": "real",
+    "status": "no files yet: see data/raw/vahan/README.md",
+    "limitations": "Manual export; automate via the dashboard's report API in the roadmap.",
+    "fetched": "2026-10-23"
+  },
+  "boundaries": {
+    "name": "District & state boundaries (Census 2011 districts, DataMeet)",
+    "url": "https://github.com/datameet/maps/tree/master/Districts/Census_2011",
+    "licence": "CC BY 2.5 IN (DataMeet)",
+    "records": 640,
+    "source_type": "real",
+    "cleaning": "Telangana districts split from Andhra Pradesh; Leh & Kargil moved to Ladakh; states dissolved from districts; geometry simplified (states ~1 km, districts ~500 m).",
+    "limitations": "2011 district map (640 districts). India now has ~780 districts; new districts sit inside their parent 2011 district.",
+    "fetched": "2026-10-23"
+  },
+  "census": {
+    "name": "Census of India 2011 district tables (population, households, urban households, vehicle ownership)",
+    "url": "https://github.com/nishusharma1608/India-Census-2011-Analysis (Census 2011 PCA/HH tables)",
+    "licence": "Government of India open data",
+    "records": 640,
+    "source_type": "real",
+    "cleaning": "Joined on census district code; urban share = urban households / households.",
+    "limitations": "2026 population = 2011 x 1.206 (UN WPP national growth) for every district -> marked Estimated.",
+    "fetched": "2026-10-23"
+  },
+  "worldpop": {
+    "name": "WorldPop 2020 population grid, 1 km, UN-adjusted (India)",
+    "url": "https://hub.worldpop.org/geodata/summary?id=31751 (ind_ppp_2020_1km_Aggregated_UNadj.tif)",
+    "licence": "CC BY 4.0",
+    "records": 3890985,
+    "source_type": "real",
+    "cleaning": "Cells assigned to districts by rasterising boundaries; rescaled to each district's 2026 population.",
+    "limitations": "Modelled population surface (random-forest dasymetric).",
+    "fetched": "2026-10-23"
+  },
+  "merge_chargers": {
+    "name": "Merged real charger points (OSM + OCM, de-duplicated)",
+    "source_type": "real",
+    "records": 606,
+    "url": "derived in pipeline/build.py",
+    "cleaning": "OSM 608; OCM duplicates merged 0; OCM new 0. Rule: <=50 m apart and same/unknown operator or name similarity > 0.5 -> one charger with both sources listed. Dropped 2 points outside India's district boundaries (offshore / across the border).",
+    "limitations": "Mapped points cover only part of the official total; see completeness per state.",
+    "fetched": "2026-10-23"
+  },
+  "modelled_chargers": {
+    "name": "Modelled charger locations (to reach official totals)",
+    "source_type": "synthetic",
+    "records": 52120,
+    "url": "generated in pipeline/build.py",
+    "cleaning": "Per district: derived official total minus mapped real points; positions sampled from WorldPop cells with probability ~ population^1.5 (seed 42); DC share 31.4% from Lok Sabha USQ 453.",
+    "limitations": "Positions are statistical placeholders, not real stations. Used only so distance/coverage metrics reflect the official charger count; switch them off on the map to see mapped points only.",
+    "fetched": "2026-10-23"
+  },
+  "forecast": {
+    "name": "EV stock forecast (CAGR & logistic fits; Low/Base/High scenarios)",
+    "source_type": "derived",
+    "url": "computed in pipeline/analysis.py",
+    "records": 8,
+    "cleaning": "Stock series back-calculated from the official 26-Jul-2026 stock minus annual registrations (Jan-Jul 2026 estimated at 1,542,917).",
+    "limitations": "State forecasts assume each state keeps its current share of national EV stock.",
+    "fetched": "2026-10-23"
+  },
+  "osm_highways": {
+    "name": "OpenStreetMap national highways (ref NH*/NE*)",
+    "url": "Overpass API",
+    "licence": "ODbL 1.0",
+    "records": 147707,
+    "source_type": "real",
+    "cleaning": "Ways merged per NH ref, simplified (~200 m tolerance); one-way carriageways count half (dual carriageways are mapped twice).",
+    "limitations": "Some NH segments lack a ref tag in OSM; length is an underestimate of the official ~1.46 lakh km.",
+    "fetched": "2026-10-23"
+  },
+  "osm_substations": {
+    "name": "OpenStreetMap power substations (power=substation)",
+    "url": "Overpass API",
+    "licence": "ODbL 1.0",
+    "records": 17110,
+    "source_type": "real",
+    "cleaning": "Reduced to points; voltage kept where tagged.",
+    "limitations": "Proxy for grid readiness only; no DISCOM spare-capacity data.",
+    "fetched": "2026-10-23"
+  },
+  "osm_pois": {
+    "name": "OpenStreetMap candidate sites (fuel stations, malls, tourist attractions, logistics areas)",
+    "url": "Overpass API",
+    "licence": "ODbL 1.0",
+    "records": 25245,
+    "source_type": "real",
+    "cleaning": "Reduced to points with a category.",
+    "limitations": "Completeness varies by region.",
+    "fetched": "2026-10-23"
+  }
+}

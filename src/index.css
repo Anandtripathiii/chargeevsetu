@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* Self-hosted variable fonts (latin). `optional` = never swap mid-render: no layout shift; system font on a cold, slow first load. */
+@font-face {
+  font-family: "Inter";
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: optional;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 300 700;
+  font-display: optional;
+}
+
+/* Colour tokens: dark is the default, `.light` on <html> switches. */
+:root {
+  --bg: #070b0f;
+  --bg-2: #0c1218;
+  --panel: rgba(16, 23, 30, 0.9);
+  --panel-solid: #111a22;
+  --line: rgba(148, 179, 199, 0.14);
+  --text: #e6eef3;
+  --muted: #8ea3b1;
+  --accent: #2ee6a6;
+  --accent-2: #19b6d2;
+  --warn: #f5b84a;
+  --crit: #ef4b5b;
+  --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+:root.light {
+  --bg: #f5f8fa;
+  --bg-2: #ffffff;
+  --panel: rgba(255, 255, 255, 0.93);
+  --panel-solid: #ffffff;
+  --line: rgba(15, 40, 60, 0.12);
+  --text: #0d1b26;
+  --muted: #51667a;
+  --accent: #0a9d6e;
+  --accent-2: #0b7f9c;
+  --warn: #b7791f;
+  --crit: #c8283a;
+  --shadow: 0 10px 30px -14px rgba(15, 40, 60, 0.25);
+  color-scheme: light;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-panel: var(--panel);
+  --color-panel-solid: var(--panel-solid);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: var(--font-sans);
+}
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.tnum { font-variant-numeric: tabular-nums; }
+/* links inside running text are underlined (not colour-only) */
+p a, li a, dd a { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+@layer components {
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 10px;
+    padding: 0.6rem 1.05rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #04140e; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { border: 1px solid var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.12rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--line) 25%, rgba(148, 179, 199, 0.22) 50%, var(--line) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s infinite linear;
+    border-radius: 10px;
+  }
+  .input {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.85rem;
+    color: var(--text);
+    width: 100%;
+  }
+  .input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type="range"] { accent-color: var(--accent); width: 100%; }
+  .prose-ev p, .prose-ev li { color: var(--muted); line-height: 1.7; }
+  .prose-ev p { margin: 0.6rem 0; }
+  .prose-ev ul { list-style: disc; padding-left: 1.2rem; margin: 0.5rem 0; }
+  .prose-ev h2 { font-size: 1.45rem; font-weight: 700; margin: 2.2rem 0 0.6rem; }
+  .prose-ev h3 { font-size: 1.05rem; font-weight: 600; margin: 1.4rem 0 0.4rem; }
+  .prose-ev strong { color: var(--text); }
+  .formula {
+    display: block;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.82rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    margin: 0.6rem 0;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text);
+  }
+  .tbl { width: 100%; font-size: 0.83rem; border-collapse: collapse; }
+  .tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .tbl td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line); }
+  .tbl tbody tr:hover { background: var(--line); }
+}
+
+/* page / card entrance: 200 ms fade-up (replaces a motion library) */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.rise { animation: rise 0.22s ease-out both; }
+
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  header, .no-print { display: none !important; }
+  html, body { background: #fff !important; color: #000 !important; }
+  .card { box-shadow: none !important; backdrop-filter: none !important; background: #fff !important; border-color: #ccc !important; }
+}
