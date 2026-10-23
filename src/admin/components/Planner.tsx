@@ -1,25 +1,25 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { CartesianGrid, Legend as RLegend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar, BarChart } from 'recharts'
 import type { PickingInfo } from '@deck.gl/core'
-import MapBase from './LazyMap'
-import type { MapBaseHandle } from './mapUtil'
-import { Segmented, Slider } from './controls'
-import { CardTitle, Kpi, Skeleton, SourceBadge } from './ui'
-import { useData, type Cells, type Forecast } from '../lib/data'
-import { useTheme } from '../lib/theme'
-import { compact, fmt, pct } from '../lib/format'
-import { blendedRatio, cagrModel, chargersNeeded, logisticModel, parseCells, VEHICLE_TYPES, type Site } from '../lib/model'
-import type { Region } from '../lib/regions'
-import { downloadCsv } from '../lib/csv'
-import { useExport } from '../lib/exporter'
-import { tooltipBox } from '../lib/tooltip'
-import { useSites } from '../lib/useSites'
+import MapBase from '../../components/LazyMap'
+import type { MapBaseHandle } from '../../components/mapUtil'
+import { Segmented, Slider } from '../../components/controls'
+import { CardTitle, Kpi, Skeleton, SourceBadge } from '../../components/ui'
+import { useData, type Cells, type Forecast } from '../../lib/data'
+import { useTheme } from '../../lib/theme'
+import { compact, fmt, pct } from '../../lib/format'
+import { blendedRatio, cagrModel, chargersNeeded, logisticModel, parseCells, VEHICLE_TYPES, type Site } from '../../lib/model'
+import type { Region } from '../../lib/regions'
+import { downloadCsv } from '../../lib/csv'
+import { useExport } from '../../lib/exporter'
+import { tooltipBox } from '../../lib/tooltip'
+import { useSites } from '../../lib/useSites'
 
 export type Scenario = 'low' | 'base' | 'high'
 const SC_COLOR = { low: '#19b6d2', base: '#b5f23d', high: '#f5b84a' }
 const YEARS = Array.from({ length: 10 }, (_, i) => 2026 + i)
 
-import { axisStyle, chartAnim, tipStyle } from '../lib/chartStyle'
+import { axisStyle, chartAnim, tipStyle } from '../../lib/chartStyle'
 
 /** Forecast + requirement + site recommendation for one region. Used by Plan & Estimate and the Case Study. */
 export default function Planner({ region, forecast, initialYear = 2030 }: { region: Region; forecast: Forecast; initialYear?: number }) {

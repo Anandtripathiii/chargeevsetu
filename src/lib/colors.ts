@@ -32,3 +32,8 @@ export function quantileScale(values: number[], log = false) {
 }
 
 export const gradient = (r: RGB[]) => `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((t) => css(ramp(r, t))).join(',')})`
+
+/** Gap / forecast heat: yellow → orange → purple (colour-blind safe, no red). */
+export const HEAT: RGB[] = [[254, 240, 138], [252, 196, 64], [249, 140, 40], [214, 82, 150], [147, 51, 234], [88, 28, 135]]
+/** Charger pins */
+export const GREEN: RGB = [34, 197, 94]

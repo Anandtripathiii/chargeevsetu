@@ -2,36 +2,23 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, ScrollRestoration, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import {
-  Bell, BookOpen, Calculator, CalendarDays, CircleHelp, Crosshair, Database, Download, FlaskConical, House, LayoutDashboard,
-  Map as MapIcon, Milestone, Moon, Search, Settings, Share2, Sun, type LucideIcon,
+  Bike, CircleHelp, Crosshair, FlaskConical, House, Map as MapIcon, Menu, Moon, PlugZap, Search, Sun, TrendingUp, type LucideIcon,
 } from 'lucide-react'
+import { Toaster } from 'sonner'
 import { useTheme } from '../lib/theme'
-import { TEAM } from '../lib/team'
-import { useData, type Summary } from '../lib/data'
-import { useExporter } from '../lib/exporter'
+import { DEMO } from '../lib/backend'
+import { AccountMenu, LoginDialog } from './Account'
 
-const NAV: [string, string, LucideIcon][] = [
+export const NAV: [string, string, LucideIcon][] = [
   ['/', 'Home', House],
-  ['/map', 'Map', MapIcon],
-  ['/gaps', 'Gap Analysis', Crosshair],
-  ['/estimate', 'Estimation', Calculator],
-  ['/dashboard', 'Dashboard', LayoutDashboard],
-  ['/case-study', 'Case Study', BookOpen],
-  ['/methodology', 'Methodology', FlaskConical],
-  ['/data-sources', 'Data Sources', Database],
-  ['/roadmap', 'Roadmap', Milestone],
+  ['/map', 'Charging map', MapIcon],
+  ['/gaps', 'Gap analysis', Crosshair],
+  ['/plan', 'Planning lab', FlaskConical],
+  ['/forecast', 'Forecast', TrendingUp],
+  ['/delivery', 'Delivery hubs', Bike],
+  ['/plugsy', 'Plugsy', PlugZap],
 ]
-const TABS: [string, string[]][] = [
-  ['Overview', ['/', '/dashboard', '/case-study', '/about']],
-  ['Monitoring', ['/map', '/gaps', '/data-sources']],
-  ['Planning', ['/estimate', '/roadmap', '/methodology']],
-]
-const TITLES: Record<string, string> = {
-  '/': 'EV charging overview', '/map': 'National EV charging map', '/gaps': 'Gap analysis', '/estimate': 'Plan & estimate',
-  '/dashboard': 'Decision dashboard', '/case-study': 'Case study', '/methodology': 'Methodology', '/data-sources': 'Data sources',
-  '/roadmap': 'Scalability roadmap', '/about': 'About & disclosure',
-}
-const PAGES: [string, string][] = [...NAV.map(([to, l]) => [to, l] as [string, string]), ['/about', 'About & Disclosure']]
+const PHONE = ['/', '/map', '/gaps', '/plan', '/plugsy']
 
 export function LogoMark({ size = 20 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden><path d="M13.5 2 5 13.5h5.5L9 22l9-12h-5.5z" fill="#0b0b0c" /></svg>
@@ -59,58 +46,37 @@ const Pop = ({ children, className = '' }: { children: ReactNode; className?: st
   </motion.div>
 )
 
-function SideItem({ to, label, Icon, end }: { to: string; label: string; Icon: LucideIcon; end?: boolean }) {
+const Tip = ({ children }: { children: ReactNode }) => (
+  <span aria-hidden className="hidden md:block pointer-events-none absolute top-full mt-2.5 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap rounded-lg bg-panel border border-line px-2.5 py-1 text-xs font-medium text-text shadow-lg opacity-0 -translate-y-1 transition duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100">{children}</span>
+)
+
+function NavItem({ to, label, Icon, id, showLabel }: { to: string; label: string; Icon: LucideIcon; id: string; showLabel?: boolean }) {
   return (
-    <NavLink to={to} end={end} aria-label={label}
-      className={({ isActive }) => `group relative grid place-items-center w-11 h-11 shrink-0 rounded-[14px] transition-colors ${isActive ? 'text-text' : 'text-muted hover:text-text hover:bg-hover'}`}>
+    <NavLink to={to} end={to === '/'} aria-label={label}
+      className={({ isActive }) => `group relative grid place-items-center shrink-0 rounded-[14px] transition-colors ${showLabel ? 'w-14 h-12' : 'w-11 h-11'} ${isActive ? 'text-text' : 'text-muted hover:text-text hover:bg-hover'}`}>
       {({ isActive }) => (
         <>
-          {isActive && <motion.span layoutId="side-active" transition={{ type: 'spring', stiffness: 520, damping: 40 }}
+          {isActive && <motion.span layoutId={id} transition={{ type: 'spring', stiffness: 520, damping: 40 }}
             className="absolute inset-0 rounded-[14px] bg-active shadow-[inset_0_0_0_1px_var(--line),0_0_22px_-6px_var(--accent-fill)]" />}
-          <Icon size={19} strokeWidth={1.8} className={`relative ${isActive ? 'text-accent' : ''}`} />
-          <Tip>{label}</Tip>
+          <span className="relative grid place-items-center gap-0.5">
+            <Icon size={19} strokeWidth={1.8} className={isActive ? 'text-accent' : ''} />
+            {showLabel && <span className="text-[10px] leading-none">{label.split(' ')[0]}</span>}
+          </span>
+          {!showLabel && <Tip>{label}</Tip>}
         </>
       )}
     </NavLink>
   )
 }
 
-const Tip = ({ children }: { children: ReactNode }) => (
-  <span aria-hidden className="hidden md:block pointer-events-none absolute left-full ml-3 z-50 whitespace-nowrap rounded-lg bg-panel border border-line px-2.5 py-1 text-xs font-medium text-text shadow-lg opacity-0 -translate-x-2 transition duration-150 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0">{children}</span>
-)
-
-function Sidebar() {
-  return (
-    <nav aria-label="Main" className="no-print fixed z-50 inset-x-0 bottom-0 h-[68px] p-2 md:inset-x-auto md:left-0 md:top-0 md:h-dvh md:w-[76px] md:p-2.5">
-      <div className="h-full rounded-[20px] bg-panel border border-line shadow-[var(--shadow)] flex md:flex-col items-center gap-1 px-1.5 md:px-0 md:py-3 overflow-x-auto md:overflow-visible [scrollbar-width:none]">
-        <Link to="/" aria-label="ChargeEVSetu home" className="hidden md:grid w-11 h-11 shrink-0 rounded-[14px] place-items-center bg-accent-fill shadow-[0_0_24px_-6px_var(--accent-fill)] mb-4 transition-transform hover:scale-105">
-          <LogoMark />
-        </Link>
-        <div className="flex md:flex-col gap-1 items-center">
-          {NAV.map(([to, label, Icon]) => <SideItem key={to} to={to} label={label} Icon={Icon} end={to === '/'} />)}
-        </div>
-        <div className="md:mt-auto flex md:flex-col gap-1 items-center">
-          <a href={`mailto:${TEAM.contact}`} aria-label="Help: contact the team" className="group relative hidden md:grid place-items-center w-11 h-11 rounded-[14px] text-muted hover:text-text hover:bg-hover transition-colors">
-            <CircleHelp size={19} strokeWidth={1.8} /><Tip>Help</Tip>
-          </a>
-          <SideItem to="/about" label="About & settings" Icon={Settings} />
-          <Link to="/about" aria-label={`${TEAM.name}: team details`} className="group relative hidden md:grid mt-2 w-9 h-9 rounded-full place-items-center text-[11px] font-semibold text-[#0b0b0c] bg-[linear-gradient(135deg,#b5f23d,#5ad1a0)] ring-2 ring-line">
-            MF<Tip>{TEAM.name}</Tip>
-          </Link>
-        </div>
-      </div>
-    </nav>
-  )
-}
-
 function ThemeToggle() {
   const [theme, toggle] = useTheme()
   return (
-    <button onClick={toggle} className="icon-btn overflow-hidden" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title="Toggle theme">
+    <button onClick={toggle} className="group relative grid place-items-center w-11 h-11 rounded-[14px] text-muted hover:text-text hover:bg-hover overflow-hidden" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span key={theme} className="grid" initial={{ rotate: -90, scale: 0.4, opacity: 0 }} animate={{ rotate: 0, scale: 1, opacity: 1 }}
           exit={{ rotate: 90, scale: 0.4, opacity: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </motion.span>
       </AnimatePresence>
     </button>
@@ -121,110 +87,94 @@ function SearchMenu() {
   const { open, setOpen, ref } = usePopover()
   const [q, setQ] = useState('')
   const nav = useNavigate()
-  const hits = PAGES.filter(([, l]) => l.toLowerCase().includes(q.trim().toLowerCase()))
+  const hits = NAV.filter(([, l]) => l.toLowerCase().includes(q.trim().toLowerCase()))
   const go = (to: string) => { nav(to); setOpen(false); setQ('') }
+  const place = () => go(`/map?q=${encodeURIComponent(q.trim())}`)
   return (
     <div ref={ref} className="relative">
-      <button className="icon-btn" aria-label="Search pages" aria-expanded={open} onClick={() => setOpen(!open)}><Search size={16} /></button>
-      <AnimatePresence>{open && (
-        <Pop className="w-72">
-          <input autoFocus className="input" placeholder="Jump to a page…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search pages"
-            onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) go(hits[0][0]) }} />
-          <ul className="mt-1.5 max-h-72 overflow-auto">
-            {hits.map(([to, l]) => <li key={to}><button className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-hover" onClick={() => go(to)}>{l}</button></li>)}
-            {!hits.length && <li className="px-3 py-2 text-sm text-muted">No page matches</li>}
-          </ul>
-        </Pop>
-      )}</AnimatePresence>
-    </div>
-  )
-}
-
-function Notifications({ s }: { s?: Summary }) {
-  const { open, setOpen, ref } = usePopover()
-  return (
-    <div ref={ref} className="relative">
-      <button className="icon-btn relative" aria-label="Data updates" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <Bell size={16} /><span className="absolute top-2 right-2.5 w-1.5 h-1.5 rounded-full bg-accent-fill" aria-hidden />
+      <button className="group relative grid place-items-center w-11 h-11 rounded-[14px] text-muted hover:text-text hover:bg-hover" aria-label="Search" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Search size={18} /><Tip>Search</Tip>
       </button>
       <AnimatePresence>{open && (
-        <Pop className="w-80">
-          <div className="px-2 py-1.5 text-xs text-muted font-medium">Data updates</div>
-          <ul className="text-sm">
-            {[
-              ['Data pipeline rebuilt', s ? `Generated ${fmtDate(s.generated)}` : '…'],
-              ['EV stock (VAHAN)', s ? `As of ${s.ev_stock_as_of}` : '…'],
-              ['Public chargers (BHEL portal)', s ? `As of ${s.public_chargers_as_of}` : '…'],
-            ].map(([t, d]) => (
-              <li key={t} className="px-2 py-2 rounded-lg hover:bg-hover flex gap-3">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent-fill shrink-0" aria-hidden />
-                <span><span className="block">{t}</span><span className="text-xs text-muted">{d}</span></span>
-              </li>
-            ))}
+        <Pop className="w-[min(20rem,calc(100vw-2rem))]">
+          <input autoFocus className="input" placeholder="Search a city, station or page…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search"
+            onKeyDown={(e) => { if (e.key === 'Enter' && q.trim()) (hits.length && q.trim().length > 2 && hits.length < NAV.length ? go(hits[0][0]) : place()) }} />
+          <ul className="mt-1.5 max-h-72 overflow-auto">
+            {q.trim() && <li><button className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-hover flex items-center gap-2" onClick={place}><MapIcon size={14} className="text-ok" />Find “{q.trim()}” on the map</button></li>}
+            {hits.map(([to, l, I]) => <li key={to}><button className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-hover flex items-center gap-2" onClick={() => go(to)}><I size={14} className="text-muted" />{l}</button></li>)}
           </ul>
-          <Link to="/data-sources" onClick={() => setOpen(false)} className="block px-2 py-1.5 text-xs text-accent">All data sources →</Link>
         </Pop>
       )}</AnimatePresence>
     </div>
   )
 }
 
-const fmtDate = (iso: string) => {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function TopBar({ pathname, s }: { pathname: string; s?: Summary }) {
-  const tab = TABS.find(([, paths]) => paths.includes(pathname))?.[0]
+function Help() {
+  const { open, setOpen, ref } = usePopover()
   return (
-    <header className="no-print sticky top-0 z-40 bg-bg/80 backdrop-blur-md">
-      <div className="h-16 px-4 md:px-6 flex items-center gap-3">
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <span className="md:hidden grid place-items-center w-8 h-8 rounded-[10px] bg-accent-fill"><LogoMark size={16} /></span>
-          <span className="text-sm font-semibold tracking-tight">Charge<span className="text-accent">EV</span>Setu</span>
-        </Link>
-        <nav aria-label="Sections" className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-1 rounded-full bg-panel border border-line p-1">
-          {TABS.map(([label, paths]) => (
-            <Link key={label} to={paths[0]} aria-current={tab === label ? 'page' : undefined}
-              className={`relative px-4 py-1.5 text-sm rounded-full transition-colors ${tab === label ? 'text-text' : 'text-muted hover:text-text'}`}>
-              {tab === label && <motion.span layoutId="tab-active" className="absolute inset-0 rounded-full bg-active" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
-              <span className="relative">{label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-1.5">
-          <SearchMenu />
-          <ThemeToggle />
-          <Notifications s={s} />
-          <Link to="/about" className="hidden sm:flex items-center gap-2 h-9 pl-1 pr-3.5 rounded-full border border-line bg-panel text-xs font-medium hover:bg-active transition-colors">
-            <span className="w-7 h-7 rounded-full grid place-items-center text-[10px] font-semibold text-[#0b0b0c] bg-[linear-gradient(135deg,#b5f23d,#5ad1a0)]">MF</span>
-            {TEAM.name}
-          </Link>
-        </div>
-      </div>
-    </header>
+    <div ref={ref} className="relative hidden sm:block">
+      <button className="group relative grid place-items-center w-11 h-11 rounded-[14px] text-muted hover:text-text hover:bg-hover" aria-label="Help" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <CircleHelp size={18} /><Tip>Help</Tip>
+      </button>
+      <AnimatePresence>{open && (
+        <Pop className="w-80 text-sm">
+          <div className="px-2 py-1.5 font-semibold">Quick help</div>
+          <ul className="px-2 pb-2 space-y-2 text-muted">
+            <li><b className="text-text">Find a charger:</b> open the map, allow location, or search a city. Zoom in to see green pins.</li>
+            <li><b className="text-text">Something wrong?</b> Tap a station and choose “Report a problem”.</li>
+            <li><b className="text-text">Share your charger:</b> go to Plugsy → Become a host.</li>
+            <li><b className="text-text">Estimates</b> (forecasts, scores, hub areas) are marked “Estimated” and are guides, not guarantees.</li>
+          </ul>
+        </Pop>
+      )}</AnimatePresence>
+    </div>
   )
 }
 
-function PageHeading({ title, s, wide }: { title: string; s?: Summary; wide: boolean }) {
-  const exp = useExporter()
-  const [copied, setCopied] = useState(false)
-  const share = async () => {
-    const url = location.href
-    try {
-      if (navigator.share) await navigator.share({ title: `ChargeEVSetu · ${title}`, url })
-      else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    } catch { /* share sheet dismissed */ }
-  }
+function TopBar() {
   return (
-    <div className={`${wide ? '' : 'max-w-[1440px] mx-auto'} w-full px-4 md:px-6 pt-2 pb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3`}>
-      <h1 className="text-[26px] sm:text-[34px] leading-tight font-semibold tracking-[-0.035em]">{title}</h1>
-      <div className="no-print flex flex-wrap items-center gap-2">
-        {s && <span className="pill text-muted !hidden sm:!inline-flex"><CalendarDays size={14} />Data {fmtDate(s.generated)}</span>}
-        <button className="pill" onClick={share}><Share2 size={14} />{copied ? 'Link copied' : 'Share report'}</button>
-        <button className="pill pill-primary" onClick={exp.run}><Download size={14} />{exp.label}</button>
+    <nav aria-label="Main" className="no-print fixed z-50 inset-x-0 top-0 p-2 md:p-2.5">
+      <div className="max-w-[1440px] mx-auto h-[56px] md:h-[60px] rounded-[20px] bg-panel border border-line shadow-[var(--shadow)] flex items-center gap-1 px-2">
+        <Link to="/" aria-label="ChargeEVSetu home" className="flex items-center gap-2.5 shrink-0 pr-2">
+          <span className="grid w-10 h-10 rounded-[14px] place-items-center bg-accent-fill shadow-[0_0_24px_-6px_var(--accent-fill)] transition-transform hover:scale-105"><LogoMark /></span>
+          <span className="hidden lg:block text-sm font-semibold tracking-tight">Charge<span className="text-accent">EV</span>Setu</span>
+        </Link>
+        <div className="hidden md:flex flex-1 justify-center gap-1">
+          {NAV.map(([to, label, Icon]) => <NavItem key={to} to={to} label={label} Icon={Icon} id="top-active" />)}
+        </div>
+        <div className="ml-auto md:ml-0 flex items-center gap-0.5">
+          {DEMO && <span className="chip text-warn border-warn/30 bg-warn/10 mr-1" title="Running without a live backend: data you add stays in this browser">Demo mode</span>}
+          <SearchMenu />
+          <ThemeToggle />
+          <Help />
+          <span className="ml-1"><AccountMenu /></span>
+        </div>
       </div>
-    </div>
+    </nav>
+  )
+}
+
+function BottomBar() {
+  const [more, setMore] = useState(false)
+  const { pathname } = useLocation()
+  useEffect(() => setMore(false), [pathname])
+  return (
+    <nav aria-label="Main (phone)" className="no-print md:hidden fixed z-50 inset-x-0 bottom-0 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <AnimatePresence>{more && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          className="card !animate-none mb-2 p-2 grid grid-cols-2 gap-1">
+          {NAV.filter(([to]) => !PHONE.includes(to)).map(([to, l, I]) => (
+            <Link key={to} to={to} className="flex items-center gap-2 px-3 py-3 rounded-xl hover:bg-hover text-sm"><I size={17} className="text-accent" />{l}</Link>
+          ))}
+        </motion.div>
+      )}</AnimatePresence>
+      <div className="h-[64px] rounded-[20px] bg-panel border border-line shadow-[var(--shadow)] flex items-center justify-around px-1">
+        {NAV.filter(([to]) => PHONE.includes(to)).map(([to, label, Icon]) => <NavItem key={to} to={to} label={label} Icon={Icon} id="bottom-active" showLabel />)}
+        <button onClick={() => setMore(!more)} aria-expanded={more} className="grid place-items-center gap-0.5 w-14 h-12 rounded-[14px] text-muted">
+          <Menu size={19} strokeWidth={1.8} /><span className="text-[10px] leading-none">More</span>
+        </button>
+      </div>
+    </nav>
   )
 }
 
@@ -237,44 +187,49 @@ function Footer() {
             <span className="grid place-items-center w-8 h-8 rounded-[10px] bg-accent-fill"><LogoMark size={16} /></span>
             <span className="font-semibold text-text tracking-tight">Charge<span className="text-accent">EV</span>Setu</span>
           </div>
-          <p className="mt-3 text-text font-medium">Bridging India's EV charging gap.</p>
-          <p className="mt-1 max-w-md">Built for the Techfest IIT Bombay EV Infrastructure Challenge. Open data, open method, open to scrutiny.</p>
-          <p className="mt-3 max-w-md">
-            <span className="text-text font-medium">{TEAM.name}</span> · Team ID {TEAM.teamId} · Competition ID {TEAM.competitionId}<br />
-            {TEAM.members.map(([n, r]) => r === 'Team Leader' ? `${n} (Leader)` : n).join(', ')}<br />
-            <a href={`mailto:${TEAM.contact}`} className="text-accent [overflow-wrap:anywhere]">{TEAM.contact}</a>
-          </p>
+          <p className="mt-3 text-text font-medium">Find, plan and share EV charging across India.</p>
+          <p className="mt-1 max-w-md">Charger locations from OpenStreetMap contributors and official government counts. Estimates are clearly marked.</p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 content-start">
-          {(['/methodology', '/data-sources', '/roadmap', '/about'] as const).map((to) => <Link key={to} to={to} className="hover:text-text">{TITLES[to]}</Link>)}
+          {NAV.slice(1).map(([to, l]) => <Link key={to} to={to} className="hover:text-text">{l}</Link>)}
         </div>
       </div>
     </footer>
   )
 }
 
+/** Lenis smooth scroll everywhere except the full-screen map (and never for reduced-motion users). */
+function useSmoothScroll(off: boolean) {
+  useEffect(() => {
+    if (off || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let lenis: { destroy: () => void } | undefined, dead = false
+    import('lenis').then(({ default: Lenis }) => { if (!dead) lenis = new Lenis({ autoRaf: true, lerp: 0.12 }) })
+    return () => { dead = true; lenis?.destroy() }
+  }, [off])
+}
+
 export default function Layout() {
   const { pathname } = useLocation()
   const outlet = useOutlet()
-  const { data: s } = useData<Summary>('summary.json')
+  const [theme] = useTheme()
   const isMap = pathname === '/map'
-  const title = TITLES[pathname] ?? "This page isn't on the map"
-
+  useSmoothScroll(isMap)
   return (
     <MotionConfig reducedMotion="user">
-      <Sidebar />
-      <div className={`app-shell md:pl-[76px] pb-[68px] md:pb-0 flex flex-col ${isMap ? 'h-dvh' : 'min-h-dvh'}`}>
-        <TopBar pathname={pathname} s={s} />
+      <TopBar />
+      <BottomBar />
+      <div className={`app-shell pt-[72px] md:pt-[80px] ${isMap ? 'h-dvh pb-[80px] md:pb-0' : 'min-h-dvh pb-[88px] md:pb-0'} flex flex-col`}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.main key={pathname} className="flex-1 flex flex-col min-h-0"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}>
-            <PageHeading title={title} s={s} wide={isMap} />
+            initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none', transform: 'none' } }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}>
             {outlet}
           </motion.main>
         </AnimatePresence>
         {!isMap && <Footer />}
       </div>
+      <LoginDialog />
+      <Toaster theme={theme} position="top-center" richColors closeButton />
       <ScrollRestoration />
     </MotionConfig>
   )

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { FeatureCollection, Geometry } from 'geojson'
-import { useData, type StateRow } from '../lib/data'
-import { css, MAGMA, quantileScale, ramp } from '../lib/colors'
-import { fmt } from '../lib/format'
-import { Skeleton } from './ui'
+import { useData, type StateRow } from '../../lib/data'
+import { css, MAGMA, quantileScale, ramp } from '../../lib/colors'
+import { fmt } from '../../lib/format'
+import { Skeleton } from '../../components/ui'
 
 // Plain equirectangular projection with latitude correction: good enough for a decorative, static India map.
 const K = 20, LAT0 = 37.2, LON0 = 68, COS = Math.cos((22 * Math.PI) / 180)

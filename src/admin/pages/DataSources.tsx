@@ -1,7 +1,7 @@
-import { CardTitle, Container, PageHeader, PageSkeleton, SourceBadge } from '../components/ui'
+import { CardTitle, Container, PageHeader, PageSkeleton, SourceBadge } from '../../components/ui'
 import { Completeness } from '../components/Completeness'
-import { useData, type SourceEntry, type StateRow, type Summary } from '../lib/data'
-import { fmt, pct } from '../lib/format'
+import { useData, type SourceEntry, type StateRow, type Summary } from '../../lib/data'
+import { fmt, pct } from '../../lib/format'
 
 const ORDER = ['official_national', 'official_chargers', 'official_ev_state', 'annual_registrations', 'osm_chargers', 'ocm', 'merge_chargers',
   'vahan_manual', 'boundaries', 'census', 'worldpop', 'osm_highways', 'osm_substations', 'osm_pois', 'modelled_chargers', 'forecast']

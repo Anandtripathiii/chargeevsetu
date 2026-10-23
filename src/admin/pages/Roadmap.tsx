@@ -1,4 +1,4 @@
-import { Container, PageHeader } from '../components/ui'
+import { Container, PageHeader } from '../../components/ui'
 
 const PHASES = [
   ['Now', 'Prototype (this site)', ['Open data from OSM, PIB, Lok Sabha replies, Census, WorldPop', 'Transparent Gap Score with live weights', 'Forecasts, charger sizing and greedy site selection', 'Static site: free hosting, loads in seconds']],

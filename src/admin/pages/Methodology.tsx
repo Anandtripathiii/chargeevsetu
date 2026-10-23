@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Container, PageHeader, PageSkeleton, SourceBadge } from '../components/ui'
-import { useData, type Forecast, type Summary } from '../lib/data'
-import { fmt, pct } from '../lib/format'
-import { DEFAULT_WEIGHTS, GAP_KEYS, GAP_LABELS, SITE_WEIGHTS } from '../lib/model'
+import { Container, PageHeader, PageSkeleton, SourceBadge } from '../../components/ui'
+import { useData, type Forecast, type Summary } from '../../lib/data'
+import { fmt, pct } from '../../lib/format'
+import { DEFAULT_WEIGHTS, GAP_KEYS, GAP_LABELS, SITE_WEIGHTS } from '../../lib/model'
 
 const FLOW = [
   ['Fetch', 'OSM Overpass · PIB / Lok Sabha PDFs · Census 2011 · WorldPop · DataMeet boundaries · (OCM, VAHAN exports)', 'data/raw/'],

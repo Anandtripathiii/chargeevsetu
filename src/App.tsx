@@ -6,13 +6,10 @@ import Home from './pages/Home' // eager: the landing page paints with the first
 
 const MapPage = lazy(() => import('./pages/MapPage'))
 const GapAnalysis = lazy(() => import('./pages/GapAnalysis'))
-const Estimation = lazy(() => import('./pages/Estimation'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const CaseStudy = lazy(() => import('./pages/CaseStudy'))
-const Methodology = lazy(() => import('./pages/Methodology'))
-const DataSources = lazy(() => import('./pages/DataSources'))
-const Roadmap = lazy(() => import('./pages/Roadmap'))
-const About = lazy(() => import('./pages/About'))
+const PlanningLab = lazy(() => import('./pages/PlanningLab'))
+const Forecast = lazy(() => import('./pages/Forecast'))
+const Delivery = lazy(() => import('./pages/Delivery'))
+const Plugsy = lazy(() => import('./pages/Plugsy'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 const s = (el: React.ReactNode) => <Suspense fallback={<PageSkeleton />}>{el}</Suspense>
@@ -24,13 +21,10 @@ const router = createBrowserRouter([
       { path: '/', element: <Home /> },
       { path: '/map', element: s(<MapPage />) },
       { path: '/gaps', element: s(<GapAnalysis />) },
-      { path: '/estimate', element: s(<Estimation />) },
-      { path: '/dashboard', element: s(<Dashboard />) },
-      { path: '/case-study', element: s(<CaseStudy />) },
-      { path: '/methodology', element: s(<Methodology />) },
-      { path: '/data-sources', element: s(<DataSources />) },
-      { path: '/roadmap', element: s(<Roadmap />) },
-      { path: '/about', element: s(<About />) },
+      { path: '/plan', element: s(<PlanningLab />) },
+      { path: '/forecast', element: s(<Forecast />) },
+      { path: '/delivery', element: s(<Delivery />) },
+      { path: '/plugsy', element: s(<Plugsy />) },
       { path: '*', element: s(<NotFound />) },
     ],
   },

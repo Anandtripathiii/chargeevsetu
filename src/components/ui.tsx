@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react'
 export type SourceType = 'real' | 'derived' | 'synthetic'
 
 const BADGE: Record<SourceType, [string, string]> = {
-  real: ['Real data', 'text-accent border-accent/30 bg-accent/10'],
+  real: ['Official / open data', 'text-ok border-ok/30 bg-ok/10'],
   derived: ['Estimated', 'text-warn border-warn/30 bg-warn/10'],
   synthetic: ['Synthetic', 'text-crit border-crit/30 bg-crit/10'],
 }

@@ -7,8 +7,8 @@ import { INDIA_BOUNDS, type MapBaseHandle } from './mapUtil'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 export const BASEMAPS = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  light: 'https://tiles.openfreemap.org/styles/positron',
 }
 
 function DeckOverlay(props: MapboxOverlayProps) {

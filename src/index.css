@@ -8,44 +8,46 @@
   font-display: optional;
 }
 
-/* Colour tokens: dark is the default, `.light` on <html> switches. */
+/* Colour tokens: dark is the default, `.light` on <html> switches. Coral = brand; green = chargers. */
 :root {
   --bg: #0b0b0c;
-  --bg-2: #121214;
-  --panel: #18181b;
-  --panel-solid: #18181b;
-  --glass: rgba(24, 24, 27, 0.72);
-  --hover: rgba(255, 255, 255, 0.05);
-  --active: rgba(255, 255, 255, 0.09);
-  --line: rgba(255, 255, 255, 0.07);
-  --text: #f4f4f5;
-  --muted: #8b8b94;
-  --accent: #b5f23d; /* text / strokes */
-  --accent-fill: #b5f23d; /* filled buttons, always lime with dark ink */
-  --accent-2: #19b6d2;
-  --warn: #f5b84a;
-  --crit: #ff5c64;
+  --bg-2: #141416;
+  --panel: #161618;
+  --panel-solid: #161618;
+  --glass: rgba(22, 22, 24, 0.78);
+  --hover: rgba(229, 231, 235, 0.05);
+  --active: rgba(229, 231, 235, 0.09);
+  --line: rgba(229, 231, 235, 0.08);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #f87171; /* text / strokes / key numbers */
+  --accent-fill: #f87171; /* filled buttons, with dark ink */
+  --accent-2: #fbbf24;
+  --ok: #22c55e; /* chargers */
+  --warn: #f59e0b;
+  --crit: #a855f7; /* "needs attention" uses purple, never red-vs-green */
   --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.4);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   color-scheme: dark;
 }
 :root.light {
-  --bg: #f6f7f4;
-  --bg-2: #f1f2ee;
+  --bg: #e5e7eb;
+  --bg-2: #f3f4f6;
   --panel: #ffffff;
   --panel-solid: #ffffff;
-  --glass: rgba(255, 255, 255, 0.8);
-  --hover: rgba(10, 12, 8, 0.04);
-  --active: rgba(10, 12, 8, 0.07);
-  --line: rgba(10, 12, 8, 0.08);
-  --text: #121410;
-  --muted: #62675e;
-  --accent: #4d7c0f; /* darker lime: readable on white */
-  --accent-fill: #b5f23d;
-  --accent-2: #0b7f9c;
-  --warn: #b7791f;
-  --crit: #c8283a;
-  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(20, 24, 16, 0.06);
+  --glass: rgba(255, 255, 255, 0.85);
+  --hover: rgba(17, 24, 39, 0.04);
+  --active: rgba(17, 24, 39, 0.07);
+  --line: rgba(17, 24, 39, 0.1);
+  --text: #111827;
+  --muted: #4b5563;
+  --accent: #dc2626; /* coral is too light for text on white; darker shade keeps 4.5:1 */
+  --accent-fill: #f87171;
+  --accent-2: #b45309;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #7e22ce;
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(17, 24, 39, 0.08);
   color-scheme: light;
 }
 
@@ -63,6 +65,7 @@
   --color-accent-fill: var(--accent-fill);
   --color-accent-2: var(--accent-2);
   --color-warn: var(--warn);
+  --color-ok: var(--ok);
   --color-crit: var(--crit);
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -239,6 +242,16 @@ p a, li a, dd a { text-decoration: underline; text-underline-offset: 3px; text-d
   0% { transform: scale(1); opacity: 0.55; }
   100% { transform: scale(2.6); opacity: 0; }
 }
+/* focus rings everywhere in brand coral */
+:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+.btn:focus-visible, .pill:focus-visible, .icon-btn:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-fill) 25%, transparent); }
+/* you-are-here dot */
+.me-dot { width: 16px; height: 16px; border-radius: 999px; background: #3b82f6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(59,130,246,.25); position: relative; }
+.me-dot::after { content: ""; position: absolute; inset: -3px; border-radius: 999px; background: #3b82f6; animation: ping-soft 2s var(--ease) infinite; }
+/* lightweight pages: View Transitions cross-fade for theme switches */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.3s; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
 .pulse-dot::after {
   content: "";
   position: absolute;

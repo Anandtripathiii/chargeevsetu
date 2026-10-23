@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Container, PageHeader } from '../components/ui'
-import { TEAM } from '../lib/team'
+import { Container, PageHeader } from '../../components/ui'
+import { TEAM } from '../team'
 
 const LIBS = [
   ['React 19, React Router 7, Vite, TypeScript', 'MIT'], ['Framer Motion, Lucide icons', 'MIT / ISC'], ['Tailwind CSS 4', 'MIT'], ['MapLibre GL JS 5', 'BSD-3'], ['deck.gl 9 (layers, aggregation, MapLibre overlay)', 'MIT'],

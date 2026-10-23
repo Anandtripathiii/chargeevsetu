@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import type { Summary } from '../lib/data'
-import { fmt, pct } from '../lib/format'
-import { SourceBadge } from './ui'
+import type { Summary } from '../../lib/data'
+import { fmt, pct } from '../../lib/format'
+import { SourceBadge } from '../../components/ui'
 
 /** Real mapped chargers vs the official total: the open-data fragmentation problem in one card. */
 export function Completeness({ s, link = true }: { s: Summary; link?: boolean }) {

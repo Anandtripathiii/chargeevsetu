@@ -1,8 +1,8 @@
 import { lazy, Suspense, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Container, PageHeader, PageSkeleton } from '../components/ui'
-import { useData, type Forecast, type StateRow, type Summary } from '../lib/data'
-import { buildRegions } from '../lib/regions'
+import { Container, PageHeader, PageSkeleton } from '../../components/ui'
+import { useData, type Forecast, type StateRow, type Summary } from '../../lib/data'
+import { buildRegions } from '../../lib/regions'
 
 // charts + map are heavy: the header and region picker render first
 const Planner = lazy(() => import('../components/Planner'))
