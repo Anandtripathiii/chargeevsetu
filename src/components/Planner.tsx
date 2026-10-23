@@ -11,14 +11,15 @@ import { compact, fmt, pct } from '../lib/format'
 import { blendedRatio, cagrModel, chargersNeeded, logisticModel, parseCells, VEHICLE_TYPES, type Site } from '../lib/model'
 import type { Region } from '../lib/regions'
 import { downloadCsv } from '../lib/csv'
+import { useExport } from '../lib/exporter'
 import { tooltipBox } from '../lib/tooltip'
 import { useSites } from '../lib/useSites'
 
 export type Scenario = 'low' | 'base' | 'high'
-const SC_COLOR = { low: '#19b6d2', base: '#2ee6a6', high: '#f5b84a' }
+const SC_COLOR = { low: '#19b6d2', base: '#b5f23d', high: '#f5b84a' }
 const YEARS = Array.from({ length: 10 }, (_, i) => 2026 + i)
 
-import { axisStyle, tipStyle } from '../lib/chartStyle'
+import { axisStyle, chartAnim, tipStyle } from '../lib/chartStyle'
 
 /** Forecast + requirement + site recommendation for one region. Used by Plan & Estimate and the Case Study. */
 export default function Planner({ region, forecast, initialYear = 2030 }: { region: Region; forecast: Forecast; initialYear?: number }) {
@@ -77,6 +78,8 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
     ])
   }
 
+  useExport('Export plan CSV', exportCsv)
+
   return (
     <div className="space-y-4">
       <div className="card p-4 flex flex-wrap items-end gap-x-8 gap-y-4 no-print">
@@ -111,11 +114,11 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
                 <YAxis tick={axisStyle} tickFormatter={(v) => compact(v)} width={58} />
                 <Tooltip contentStyle={tipStyle} formatter={(v) => compact(Number(v))} />
                 <RLegend wrapperStyle={{ fontSize: 11 }} />
-                <Line dataKey="actual" name="VAHAN stock (back-calc.)" stroke="var(--text)" strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={false} />
-                <Line dataKey="cagr" name={`CAGR fit (R² ${forecast.fits.cagr.r2.toFixed(3)})`} stroke="#8ea3b1" strokeDasharray="4 4" dot={false} isAnimationActive={false} />
-                <Line dataKey="logistic" name={`S-curve fit (R² ${forecast.fits.logistic.r2.toFixed(3)})`} stroke="#b07cff" strokeDasharray="2 3" dot={false} isAnimationActive={false} />
+                <Line dataKey="actual" name="VAHAN stock (back-calc.)" stroke="var(--text)" strokeWidth={2.5} dot={{ r: 3 }} {...chartAnim} />
+                <Line dataKey="cagr" name={`CAGR fit (R² ${forecast.fits.cagr.r2.toFixed(3)})`} stroke="#8ea3b1" strokeDasharray="4 4" dot={false} {...chartAnim} />
+                <Line dataKey="logistic" name={`S-curve fit (R² ${forecast.fits.logistic.r2.toFixed(3)})`} stroke="#b07cff" strokeDasharray="2 3" dot={false} {...chartAnim} />
                 {(['low', 'base', 'high'] as const).map((k) => (
-                  <Line key={k} dataKey={k} name={`${k[0].toUpperCase()}${k.slice(1)} scenario`} stroke={SC_COLOR[k]} strokeWidth={k === scenario ? 3 : 1.5} dot={false} isAnimationActive={false} />
+                  <Line key={k} dataKey={k} name={`${k[0].toUpperCase()}${k.slice(1)} scenario`} stroke={SC_COLOR[k]} strokeWidth={k === scenario ? 3 : 1.5} dot={false} {...chartAnim} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -134,7 +137,7 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
                 <XAxis type="number" tick={axisStyle} tickFormatter={(v) => compact(v)} />
                 <YAxis type="category" dataKey="type" tick={axisStyle} width={44} />
                 <Tooltip contentStyle={tipStyle} formatter={(v) => fmt(Number(v))} cursor={{ fill: 'var(--line)' }} />
-                <Bar dataKey="chargers" fill="var(--accent)" radius={[0, 6, 6, 0]} isAnimationActive={false} />
+                <Bar dataKey="chargers" fill="var(--accent)" radius={[0, 6, 6, 0]} {...chartAnim} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -162,8 +165,8 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
               <MapBase ref={mapRef} basemap={theme} deck={(_, { ScatterplotLayer }) => ({
                 layers: sites ? [
                   new ScatterplotLayer({ id: 'demand', data: parsed!, getPosition: (c: { lon: number; lat: number }) => [c.lon, c.lat], getRadius: 900, getFillColor: (c: { ch3: number; evs: number }) => c.ch3 === 0 ? [239, 75, 91, 70] : [142, 163, 177, 40] }),
-                  new ScatterplotLayer<Site>({ id: 'halo', data: sites.sites, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 3000, getFillColor: [46, 230, 166, 30], getLineColor: [46, 230, 166, 160], stroked: true, lineWidthMinPixels: 1 }),
-                  new ScatterplotLayer<Site>({ id: 'sites', data: sites.sites, pickable: true, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 7, radiusUnits: 'pixels', getFillColor: [255, 255, 255, 255], getLineColor: [46, 230, 166, 255], stroked: true, lineWidthMinPixels: 3 }),
+                  new ScatterplotLayer<Site>({ id: 'halo', data: sites.sites, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 3000, getFillColor: [181, 242, 61, 30], getLineColor: [181, 242, 61, 160], stroked: true, lineWidthMinPixels: 1 }),
+                  new ScatterplotLayer<Site>({ id: 'sites', data: sites.sites, pickable: true, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 7, radiusUnits: 'pixels', getFillColor: [255, 255, 255, 255], getLineColor: [181, 242, 61, 255], stroked: true, lineWidthMinPixels: 3 }),
                 ] : [],
                 getTooltip: ({ object, layer }: PickingInfo) => layer?.id === 'sites' && object
                   ? tooltipBox(`<b>Site #${(object as Site).rank}</b> · hub of ${hubSize} chargers<br/>${(object as Site).reasons.map((r) => `• ${r}`).join('<br/>')}`) : null,
@@ -209,7 +212,7 @@ function BeforeAfter({ label, a, b }: { label: string; a: number; b: number }) {
   return (
     <div className="rounded-lg border border-line p-3">
       <div className="text-[11px] text-muted">{label}</div>
-      <div className="font-display font-bold text-lg tnum">{pct(a)} <span className="text-muted">→</span> <span className="text-accent">{pct(b)}</span></div>
+      <div className="font-semibold tracking-[-0.03em] text-lg tnum">{pct(a)} <span className="text-muted">→</span> <span className="text-accent">{pct(b)}</span></div>
     </div>
   )
 }

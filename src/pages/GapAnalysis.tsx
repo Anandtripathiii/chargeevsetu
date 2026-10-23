@@ -12,6 +12,7 @@ import { css, GAP, gradient, ramp } from '../lib/colors'
 import { compact, fmt } from '../lib/format'
 import { DEFAULT_WEIGHTS, GAP_KEYS, GAP_LABELS, gapScores, type GapKey } from '../lib/model'
 import { downloadCsv } from '../lib/csv'
+import { useExport } from '../lib/exporter'
 import { tooltipBox } from '../lib/tooltip'
 
 type Seg = Highways['segments'][number]
@@ -43,6 +44,9 @@ export default function GapAnalysis() {
   const view = useMemo(() => (scored ?? []).filter((d) =>
     (!state || d.state === state) && (!q || d.name.toLowerCase().includes(q.toLowerCase()))), [scored, state, q])
 
+  const exportCsv = () => downloadCsv('chargeevsetu-gap-ranking.csv', view.map((d) => ({ rank: d.liveRank, district: d.name, state: d.state, gap_score: d.score.toFixed(2), evs_est: d.evs, chargers_est: d.chargers, evs_per_charger: d.evs_per_charger.toFixed(1), avg_km_to_charger: d.dist_km.toFixed(2), urban_share: d.urban_share, nh_km: d.nh_km, weights: GAP_KEYS.map((k) => `${k}=${w[k]}`).join(' ') })))
+  useExport('Export CSV', exportCsv)
+
   const sumW = GAP_KEYS.reduce((s, k) => s + w[k], 0) || 1
   const changed = GAP_KEYS.some((k) => Math.abs(w[k] - DEFAULT_WEIGHTS[k]) > 1e-9)
 
@@ -63,7 +67,7 @@ export default function GapAnalysis() {
 
   return (
     <>
-      <PageHeader eyebrow="Gap Analysis" title="Which districts need chargers most?">
+      <PageHeader title="Which districts need chargers most?">
         Every district gets a <b className="text-text">Gap Score from 0 to 100</b> built from five factors. Each factor is scaled 0–1 across all
         640 districts and weighted. Move the sliders to apply your own priorities; the ranking and map update instantly.
       </PageHeader>
@@ -97,13 +101,13 @@ export default function GapAnalysis() {
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
-            <div className="card p-4"><div className="text-xs text-muted">Critical districts (score ≥ {summary ? fmt(summary.critical_threshold, 1) : '…'})</div><div className="text-3xl font-display font-bold text-crit tnum mt-1">{critical ?? '…'}</div></div>
-            <div className="card p-4"><div className="text-xs text-muted">States with ≥ 1 critical district</div><div className="text-3xl font-display font-bold tnum mt-1">{scored && summary ? new Set(scored.filter((d) => d.score >= summary.critical_threshold).map((d) => d.state)).size : '…'}</div></div>
-            <div className="card p-4"><div className="text-xs text-muted">Ranking stability (±50% on any weight)</div><div className="text-3xl font-display font-bold tnum mt-1">{summary ? `≥ ${fmt(Math.min(...Object.entries(summary.sensitivity).filter(([k]) => !k.includes('top50')).map(([, v]) => v)) * 100, 0)}%` : '…'}</div><div className="text-[11px] text-muted">Spearman rank correlation vs. default weights</div></div>
+            <div className="card p-4"><div className="text-xs text-muted">Critical districts (score ≥ {summary ? fmt(summary.critical_threshold, 1) : '…'})</div><div className="text-3xl font-semibold tracking-[-0.03em] text-crit tnum mt-1">{critical ?? '…'}</div></div>
+            <div className="card p-4"><div className="text-xs text-muted">States with ≥ 1 critical district</div><div className="text-3xl font-semibold tracking-[-0.03em] tnum mt-1">{scored && summary ? new Set(scored.filter((d) => d.score >= summary.critical_threshold).map((d) => d.state)).size : '…'}</div></div>
+            <div className="card p-4"><div className="text-xs text-muted">Ranking stability (±50% on any weight)</div><div className="text-3xl font-semibold tracking-[-0.03em] tnum mt-1">{summary ? `≥ ${fmt(Math.min(...Object.entries(summary.sensitivity).filter(([k]) => !k.includes('top50')).map(([, v]) => v)) * 100, 0)}%` : '…'}</div><div className="text-[11px] text-muted">Spearman rank correlation vs. default weights</div></div>
           </div>
 
           <div className="card p-4">
-            <CardTitle right={<button className="btn btn-ghost !py-1.5 !text-xs" onClick={() => downloadCsv('chargeevsetu-gap-ranking.csv', view.map((d) => ({ rank: d.liveRank, district: d.name, state: d.state, gap_score: d.score.toFixed(2), evs_est: d.evs, chargers_est: d.chargers, evs_per_charger: d.evs_per_charger.toFixed(1), avg_km_to_charger: d.dist_km.toFixed(2), urban_share: d.urban_share, nh_km: d.nh_km, weights: GAP_KEYS.map((k) => `${k}=${w[k]}`).join(' ') })))}>Export CSV</button>}>
+            <CardTitle right={<button className="btn btn-ghost !py-1.5 !text-xs" onClick={exportCsv}>Export CSV</button>}>
               Ranked districts
             </CardTitle>
             <div className="flex flex-wrap gap-2 mb-3">

@@ -6,15 +6,16 @@ import {
 } from 'recharts'
 import { CardTitle, Container, Kpi, PageHeader, PageSkeleton, SourceBadge } from '../components/ui'
 import { Segmented } from '../components/controls'
-import { axisStyle, tipStyle } from '../lib/chartStyle'
+import { axisStyle, chartAnim, tipStyle } from '../lib/chartStyle'
 import { useData, type DistrictRow, type Forecast, type StateRow, type Summary } from '../lib/data'
 import { compact, fmt, pct } from '../lib/format'
 import { downloadCsv } from '../lib/csv'
+import { useExport } from '../lib/exporter'
 import { css, GAP, ramp } from '../lib/colors'
 import { VEHICLE_TYPES } from '../lib/model'
 
 type Veh = 'all' | (typeof VEHICLE_TYPES)[number]
-const MIX_COLORS = ['#2ee6a6', '#19b6d2', '#f5b84a', '#b07cff', '#ef4b5b']
+const MIX_COLORS = ['#b5f23d', '#19b6d2', '#f5b84a', '#b07cff', '#ef4b5b']
 
 export default function Dashboard() {
   const { data: s } = useData<Summary>('summary.json')
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [veh, setVeh] = useState<Veh>('all')
   const [topN, setTopN] = useState<'15' | '36'>('15')
   const [focus, setFocus] = useState('')
+  useExport('Export CSV', () => states && downloadCsv('chargeevsetu-state-indicators.csv', indicatorsOf(states)))
 
   const target = f ? f.blended_ratio : 44
   const rows = useMemo(() => (states ?? []).map((st) => {
@@ -33,7 +35,7 @@ export default function Dashboard() {
 
   // header paints immediately; the data-driven body follows
   const header = (
-    <PageHeader eyebrow="Decision-support dashboard" title="India's charging gap at a glance">
+    <PageHeader title="India's charging gap at a glance">
         One screen for planners: supply against demand by state, growth trends, the most critical districts and data quality.
         Use the filters to focus on a vehicle type or a state.
       </PageHeader>
@@ -57,11 +59,7 @@ export default function Dashboard() {
   const balanced = [{ x: Math.min(...xs), y: Math.min(...xs) / target }, { x: Math.max(...xs), y: Math.max(...xs) / target }]
   const topD = [...districts].filter((d) => !focus || d.state === focus).sort((a, b) => b.gap_score - a.gap_score).slice(0, 10)
   const mix = VEHICLE_TYPES.map((k, i) => ({ name: k, value: f.vehicle_mix[k], fill: MIX_COLORS[i] }))
-  const indicators = [...states].sort((a, b) => b.evs_per_charger - a.evs_per_charger).map((r) => ({
-    state: r.state, evs_per_charger: Math.round(r.evs_per_charger), chargers_per_lakh: r.chargers_per_lakh,
-    chargers_per_100km_nh: r.chargers_per_100km_nh, chargers_per_100km2: r.chargers_per_100km2, urban_coverage_pct: r.coverage,
-    fast_share_mapped_pct: r.fast_share_mapped != null ? r.fast_share_mapped * 100 : null, nh_gap_pct: r.nh_km ? (r.nh_gap_km / r.nh_km) * 100 : null,
-  }))
+  const indicators = indicatorsOf(states)
   const completeness = [...states].sort((a, b) => b.official_chargers_2025 - a.official_chargers_2025).slice(0, 15)
 
   return (
@@ -98,7 +96,7 @@ export default function Dashboard() {
                   <YAxis type="category" dataKey="state" tick={axisStyle} width={130} interval={0} />
                   <Tooltip contentStyle={tipStyle} formatter={(v) => fmt(Number(v))} cursor={{ fill: 'var(--line)' }} />
                   {veh === 'all' && <ReferenceLine x={target} stroke="var(--accent)" strokeDasharray="4 3" label={{ value: `target ${fmt(target)}`, fill: 'var(--accent)', fontSize: 11, position: 'top' }} />}
-                  <Bar dataKey="epc" name="EVs per charger" radius={[0, 5, 5, 0]} isAnimationActive={false}>
+                  <Bar dataKey="epc" name="EVs per charger" radius={[0, 5, 5, 0]} {...chartAnim}>
                     {byEpc.map((r) => <Cell key={r.state} fill={r.state === focus ? 'var(--text)' : css(ramp(GAP, Math.min(1, r.epc / (target * 8))))} />)}
                   </Bar>
                 </BarChart>
@@ -118,8 +116,8 @@ export default function Dashboard() {
                     <YAxis yAxisId="ch" orientation="right" tick={axisStyle} tickFormatter={(v) => compact(v)} width={48} />
                     <Tooltip contentStyle={tipStyle} formatter={(v) => fmt(Number(v))} labelFormatter={(v) => String(Math.floor(Number(v)))} />
                     <RLegend wrapperStyle={{ fontSize: 11 }} />
-                    <Line yAxisId="ev" dataKey="evs" name="EVs on road (left)" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
-                    <Line yAxisId="ch" dataKey="chargers" name="Public chargers (right)" stroke="#f5b84a" strokeWidth={2.5} dot={{ r: 4 }} connectNulls isAnimationActive={false} />
+                    <Line yAxisId="ev" dataKey="evs" name="EVs on road (left)" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 3 }} connectNulls {...chartAnim} />
+                    <Line yAxisId="ch" dataKey="chargers" name="Public chargers (right)" stroke="#f5b84a" strokeWidth={2.5} dot={{ r: 4 }} connectNulls {...chartAnim} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -130,7 +128,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-4">
                 <div className="h-44 w-44 shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart><Pie data={mix} dataKey="value" innerRadius={45} outerRadius={75} paddingAngle={2} isAnimationActive={false} stroke="none" /><Tooltip contentStyle={tipStyle} formatter={(v) => pct(Number(v) * 100)} /></PieChart>
+                    <PieChart><Pie data={mix} dataKey="value" innerRadius={45} outerRadius={75} paddingAngle={2} {...chartAnim} stroke="none" /><Tooltip contentStyle={tipStyle} formatter={(v) => pct(Number(v) * 100)} /></PieChart>
                   </ResponsiveContainer>
                 </div>
                 <ul className="text-sm space-y-1.5">
@@ -156,9 +154,9 @@ export default function Dashboard() {
                     const p = payload?.[0]?.payload as { name?: string; x: number; y: number } | undefined
                     return p?.name ? <div style={tipStyle} className="px-3 py-2"><b>{p.name}</b><br />EVs {compact(p.x)} · chargers {fmt(p.y)}<br />{fmt(p.x / p.y)} EVs per charger</div> : null
                   }} />
-                  <Scatter data={balanced} line={{ stroke: 'var(--accent)', strokeDasharray: '5 4' }} shape={() => <g />} isAnimationActive={false} />
-                  <Scatter data={scatter.map((r) => ({ name: r.state, x: r.evsV, y: Math.max(r.chargers, 1) }))} isAnimationActive={false}>
-                    {scatter.map((r) => <Cell key={r.state} fill={r.state === focus ? 'var(--text)' : r.epc > target ? '#ef4b5b' : '#2ee6a6'} />)}
+                  <Scatter data={balanced} line={{ stroke: 'var(--accent)', strokeDasharray: '5 4' }} shape={() => <g />} {...chartAnim} />
+                  <Scatter data={scatter.map((r) => ({ name: r.state, x: r.evsV, y: Math.max(r.chargers, 1) }))} {...chartAnim}>
+                    {scatter.map((r) => <Cell key={r.state} fill={r.state === focus ? 'var(--text)' : r.epc > target ? '#ef4b5b' : '#b5f23d'} />)}
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
@@ -193,8 +191,8 @@ export default function Dashboard() {
                 <YAxis tick={axisStyle} tickFormatter={(v) => compact(v)} />
                 <Tooltip contentStyle={tipStyle} formatter={(v) => fmt(Number(v))} cursor={{ fill: 'var(--line)' }} />
                 <RLegend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="official_chargers_2025" name="Official (MoP, Aug 2025)" fill="#19b6d2" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                <Bar dataKey="real_chargers" name="Mapped in OSM" fill="#2ee6a6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="official_chargers_2025" name="Official (MoP, Aug 2025)" fill="#19b6d2" radius={[4, 4, 0, 0]} {...chartAnim} />
+                <Bar dataKey="real_chargers" name="Mapped in OSM" fill="#b5f23d" radius={[4, 4, 0, 0]} {...chartAnim} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -245,3 +243,9 @@ export default function Dashboard() {
     </>
   )
 }
+
+const indicatorsOf = (states: StateRow[]) => [...states].sort((a, b) => b.evs_per_charger - a.evs_per_charger).map((r) => ({
+  state: r.state, evs_per_charger: Math.round(r.evs_per_charger), chargers_per_lakh: r.chargers_per_lakh,
+  chargers_per_100km_nh: r.chargers_per_100km_nh, chargers_per_100km2: r.chargers_per_100km2, urban_coverage_pct: r.coverage,
+  fast_share_mapped_pct: r.fast_share_mapped != null ? r.fast_share_mapped * 100 : null, nh_gap_pct: r.nh_km ? (r.nh_gap_km / r.nh_km) * 100 : null,
+}))

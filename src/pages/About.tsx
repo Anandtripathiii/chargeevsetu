@@ -3,9 +3,9 @@ import { Container, PageHeader } from '../components/ui'
 import { TEAM } from '../lib/team'
 
 const LIBS = [
-  ['React 19, React Router 7, Vite, TypeScript', 'MIT'], ['Tailwind CSS 4', 'MIT'], ['MapLibre GL JS 5', 'BSD-3'], ['deck.gl 9 (layers, aggregation, MapLibre overlay)', 'MIT'],
+  ['React 19, React Router 7, Vite, TypeScript', 'MIT'], ['Framer Motion, Lucide icons', 'MIT / ISC'], ['Tailwind CSS 4', 'MIT'], ['MapLibre GL JS 5', 'BSD-3'], ['deck.gl 9 (layers, aggregation, MapLibre overlay)', 'MIT'],
   ['react-map-gl 8', 'MIT'], ['Recharts 3', 'MIT'], ['pandas, GeoPandas, Shapely, SciPy, NumPy, rasterio, pypdf, requests', 'BSD / MIT / Apache-2.0'],
-  ['CARTO basemaps (dark-matter, positron)', 'CARTO terms; © OSM contributors'], ['Inter, Space Grotesk (self-hosted via Fontsource)', 'OFL'],
+  ['CARTO basemaps (dark-matter, positron)', 'CARTO terms; © OSM contributors'], ['Inter (self-hosted via Fontsource)', 'OFL'],
 ]
 const DATA = [
   'Press Information Bureau: state-wise public EV charging stations (Ministry of Power inputs, Aug 2025); state-wise registered EVs (VAHAN, 03-Aug-2023)',
@@ -19,14 +19,14 @@ const DATA = [
 export default function About() {
   return (
     <>
-      <PageHeader eyebrow="About & disclosure" title="About ChargeEVSetu">
+      <PageHeader title="About ChargeEVSetu">
         ChargeEVSetu ("setu" means bridge) is our submission to the Techfest IIT Bombay EV Infrastructure Challenge 1: mapping and integrating nationwide EV charger
         installations based on vehicle population using VAHAN data. Our goal is to bridge India's EV charging gap with a method any planner can check.
       </PageHeader>
       <Container className="grid lg:grid-cols-2 gap-4">
         <section className="card p-5">
           <h2 className="font-semibold text-lg">Team</h2>
-          <p className="text-accent font-display font-semibold mt-1">{TEAM.name}</p>
+          <p className="text-accent font-semibold mt-1">{TEAM.name}</p>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm mt-2 [&>dd]:[overflow-wrap:anywhere]">
             <dt className="text-muted">Team ID</dt><dd className="tnum">{TEAM.teamId}</dd>
             <dt className="text-muted">Competition ID</dt><dd className="tnum">{TEAM.competitionId}</dd>
@@ -35,7 +35,7 @@ export default function About() {
           <ul className="mt-4 grid sm:grid-cols-2 gap-3">
             {TEAM.members.map(([n, role]) => (
               <li key={n} className="rounded-xl border border-line p-3 flex items-center gap-3">
-                <span aria-hidden className="w-10 h-10 shrink-0 rounded-full bg-accent/15 text-accent grid place-items-center font-bold">{n.split(' ').map((w) => w[0]).join('')}</span>
+                <span aria-hidden className="w-10 h-10 shrink-0 rounded-full bg-accent/15 text-accent grid place-items-center font-semibold">{n.split(' ').map((w) => w[0]).join('')}</span>
                 <div><div className="font-medium text-sm">{n}</div><div className="text-xs text-muted">{role}</div></div>
               </li>
             ))}

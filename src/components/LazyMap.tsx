@@ -31,10 +31,10 @@ function useMapReady(el: React.RefObject<HTMLDivElement | null>) {
 
 function Placeholder({ onLoad }: { onLoad?: () => void }) {
   return (
-    <div className="absolute inset-0 grid place-items-center bg-bg-2" aria-busy={!onLoad}>
+    <div className="absolute inset-0 grid place-items-center skeleton !rounded-none" aria-busy={!onLoad}>
       {onLoad
-        ? <button className="btn text-xs" onClick={onLoad}>Load interactive map</button>
-        : <span className="text-xs text-muted flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> Loading interactive map…</span>}
+        ? <button className="btn btn-ghost text-xs" onClick={onLoad}>Load interactive map</button>
+        : <span className="text-xs text-muted flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-accent-fill animate-pulse" /> Loading interactive map…</span>}
     </div>
   )
 }

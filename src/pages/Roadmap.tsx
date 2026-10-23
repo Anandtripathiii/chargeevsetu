@@ -11,17 +11,17 @@ const PHASES = [
 export default function Roadmap() {
   return (
     <>
-      <PageHeader eyebrow="Scalability roadmap" title="From prototype to a national platform">
+      <PageHeader title="From prototype to a national platform">
         The pipeline and the browser model are deliberately simple and modular. Each data source is one script, every metric is one formula,
         and outputs are static files. Swapping an estimate for an official feed is a local change, not a rebuild.
       </PageHeader>
       <Container>
         <ol className="relative border-l-2 border-line ml-3 space-y-8">
           {PHASES.map(([when, title, items], i) => (
-            <li key={when} className="pl-8 relative rise" style={{ animationDelay: `${i * 50}ms` }}>
-              <span className={`absolute -left-[11px] top-1 w-5 h-5 rounded-full border-4 border-bg ${i === 0 ? 'bg-accent' : 'bg-accent-2'}`} />
+            <li key={when} className="pl-8 relative rise">
+              <span className={`absolute -left-[11px] top-1 w-5 h-5 rounded-full border-4 border-bg ${i === 0 ? 'bg-accent-fill shadow-[0_0_16px_var(--accent-fill)]' : 'bg-active'}`} />
               <div className="text-xs font-semibold text-accent uppercase tracking-wider">{when}</div>
-              <h2 className="text-xl font-bold mt-0.5">{title}</h2>
+              <h2 className="text-xl font-semibold mt-0.5">{title}</h2>
               <ul className="grid sm:grid-cols-2 gap-2 mt-3">
                 {items.map((t) => <li key={t} className="card px-4 py-3 text-sm">{t}</li>)}
               </ul>

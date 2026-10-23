@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { axisStyle, tipStyle } from '../lib/chartStyle'
+import { axisStyle, chartAnim, tipStyle } from '../lib/chartStyle'
 import { Segmented } from '../components/controls'
 import { CardTitle, Container, Kpi, PageSkeleton, SourceBadge } from '../components/ui'
 import { useData, type DistrictRow, type Forecast, type StateRow, type Summary } from '../lib/data'
@@ -42,20 +42,20 @@ export default function CaseStudy() {
 
   return (
     <>
-      <section className="border-b border-line">
-        <Container className="py-10">
+      <Container>
+        <section className="card p-6 sm:p-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Case study</div>
             {cases.length > 1 && <Segmented value={slug} onChange={(v) => setParams({ region: v }, { replace: true })} options={cases.map(([s, n]) => [s, n])} />}
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold mt-3 max-w-4xl">{region.name}: from {fmt(region.chargers)} chargers to the network it needs by 2030</h1>
+          <h2 className="text-3xl sm:text-[44px] leading-[1.08] font-semibold tracking-[-0.035em] mt-3 max-w-4xl">{region.name}: from {fmt(region.chargers)} chargers to the network it needs by 2030</h2>
           <p className="text-muted mt-4 max-w-3xl text-lg leading-relaxed">
             {region.name} has about <b className="text-text">{compact(region.evs)} EVs</b> and <b className="text-text">{fmt(region.chargers)} public chargers</b>,
             or {fmt(epc)} EVs per charger, against a planning target of about {fmt(ratio)}. Under the base scenario EVs reach {compact(evs2030)} by 2030,
             so roughly <b className="text-warn">{fmt(need2030.additional)} more chargers</b> are needed.
           </p>
-        </Container>
-      </section>
+        </section>
+      </Container>
 
       <Container className="py-10 space-y-12">
         <Chapter n={1} title="Where things stand today">
@@ -80,7 +80,7 @@ export default function CaseStudy() {
                       <YAxis type="category" dataKey="name" tick={axisStyle} width={130} interval={0} />
                       <Tooltip contentStyle={tipStyle} formatter={(v) => fmt(Number(v))} cursor={{ fill: 'var(--line)' }} />
                       <ReferenceLine x={ratio} stroke="var(--accent)" strokeDasharray="4 3" label={{ value: `target ${fmt(ratio)}`, fill: 'var(--accent)', fontSize: 11, position: 'top' }} />
-                      <Bar dataKey="evs_per_charger" radius={[0, 5, 5, 0]} isAnimationActive={false}>
+                      <Bar dataKey="evs_per_charger" radius={[0, 5, 5, 0]} {...chartAnim}>
                         {byEpc.map((d) => <Cell key={d.id} fill={css(ramp(GAP, d.gap_score / 100))} />)}
                       </Bar>
                     </BarChart>
@@ -122,8 +122,8 @@ function Chapter({ n, title, children }: { n: number; title: string; children: R
   return (
     <section>
       <div className="flex items-baseline gap-3 mb-5">
-        <span className="font-display text-accent text-sm font-bold tnum">0{n}</span>
-        <h2 className="text-2xl font-bold">{title}</h2>
+        <span className="text-accent text-sm font-semibold tnum">0{n}</span>
+        <h2 className="text-2xl font-semibold">{title}</h2>
       </div>
       {children}
     </section>

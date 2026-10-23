@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState, type ReactNode } from 'react'
-import MapGL, { Layer, NavigationControl, Source, useControl, type MapRef } from 'react-map-gl/maplibre'
+import MapGL, { Layer, Marker, NavigationControl, Source, useControl, type MapRef } from 'react-map-gl/maplibre'
 import { MapboxOverlay, type MapboxOverlayProps } from '@deck.gl/mapbox'
 import { GeoJsonLayer, PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { HeatmapLayer } from '@deck.gl/aggregation-layers'
@@ -18,7 +18,7 @@ function DeckOverlay(props: MapboxOverlayProps) {
 }
 
 /** Layer classes and map components, handed to the page so it never imports MapLibre / deck.gl itself (they load lazily). */
-export const kit = { GeoJsonLayer, PathLayer, ScatterplotLayer, HeatmapLayer, Source, Layer }
+export const kit = { GeoJsonLayer, PathLayer, ScatterplotLayer, HeatmapLayer, Source, Layer, Marker }
 export type Kit = typeof kit
 
 export interface MapBaseProps {
@@ -27,11 +27,12 @@ export interface MapBaseProps {
   children?: (k: Kit) => ReactNode
   initialBounds?: [[number, number], [number, number]]
   className?: string
+  nav?: 'top-right' | 'bottom-right'
 }
 
 /** MapLibre basemap + deck.gl overlay (interleaved so deck layers sit inside the map's WebGL context). */
 const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
-  function MapBase({ basemap, deck, children, initialBounds = INDIA_BOUNDS, className }, ref) {
+  function MapBase({ basemap, deck, children, initialBounds = INDIA_BOUNDS, className, nav = 'bottom-right' }, ref) {
     const map = useRef<MapRef>(null)
     // first label layer of the basemap: polygon layers go beneath it so place names stay readable
     const [labelId, setLabelId] = useState<string>()
@@ -71,7 +72,7 @@ const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
           onLoad={onStyle}
           onIdle={flush}
         >
-          <NavigationControl position="bottom-right" showCompass={false} />
+          <NavigationControl position={nav} showCompass={false} />
           <DeckOverlay {...deck(labelId, kit)} />
           {children?.(kit)}
         </MapGL>

@@ -17,7 +17,7 @@ export default function Estimation() {
 
   return (
     <>
-      <PageHeader eyebrow="Plan & Estimate" title="How many chargers, and where?">
+      <PageHeader title="How many chargers, and where?">
         Pick a state, region or corridor. Choose a growth scenario, a target year and a service standard (EVs per public charger).
         You get the forecast, the chargers required each year, and recommended sites with a "why here" for each one.
       </PageHeader>
@@ -34,7 +34,7 @@ export default function Estimation() {
       <Container>
         {!region || !forecast ? <PageSkeleton /> : (
           <>
-            <h2 className="hidden print:block text-2xl font-bold mb-2">ChargeEVSetu planning report · {region.name}</h2>
+            <h2 className="hidden print:block text-2xl font-semibold mb-2">ChargeEVSetu planning report · {region.name}</h2>
             <Suspense fallback={<PageSkeleton />}><Planner key={region.slug} region={region} forecast={forecast} /></Suspense>
           </>
         )}

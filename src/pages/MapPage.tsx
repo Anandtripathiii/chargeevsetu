@@ -121,7 +121,7 @@ export default function MapPage() {
         const s = stateByName.get(f.properties?.state)
         return s && scale && m ? [...ramp(m.ramp, scale.t(stateVal(s))), 170] : [0, 0, 0, 0]
       },
-      getLineColor: [...line, 90] as [number, number, number, number], lineWidthMinPixels: 0.8, autoHighlight: true, highlightColor: [46, 230, 166, 80],
+      getLineColor: [...line, 90] as [number, number, number, number], lineWidthMinPixels: 0.8, autoHighlight: true, highlightColor: [181, 242, 61, 80],
       onClick: (i: PickingInfo<Feature>) => { const s = stateByName.get(i.object?.properties?.state); if (s) selectState(s.slug) },
       updateTriggers: { getFillColor: [metric, veh, scale], getLineColor: basemap },
     }),
@@ -138,9 +138,9 @@ export default function MapPage() {
         const d = distById.get(f.properties?.id)
         return d && scale && m ? [...ramp(m.ramp, scale.t(distVal(d))), 175] : [0, 0, 0, 0]
       },
-      getLineColor: (f: Feature): [number, number, number, number] => (f.properties?.id === selDistrict ? [46, 230, 166, 255] : [...line, 110]),
+      getLineColor: (f: Feature): [number, number, number, number] => (f.properties?.id === selDistrict ? [181, 242, 61, 255] : [...line, 110]),
       getLineWidth: (f: Feature) => (f.properties?.id === selDistrict ? 3 : 1), lineWidthUnits: 'pixels',
-      autoHighlight: true, highlightColor: [46, 230, 166, 80],
+      autoHighlight: true, highlightColor: [181, 242, 61, 80],
       onHover: (i: PickingInfo<Feature>) => setHoverDistrict(i.object?.properties?.id ?? null),
       onClick: (i: PickingInfo<Feature>) => setSelDistrict(i.object?.properties?.id ?? null),
       updateTriggers: { getFillColor: [metric, veh, scale], getLineColor: [selDistrict, basemap], getLineWidth: selDistrict },
@@ -155,7 +155,7 @@ export default function MapPage() {
     }),
     layers.highways && highways && new PathLayer<Seg>({
       id: 'highways', data: highways.segments, getPath: (s) => s[4], pickable: true, capRounded: true, widthUnits: 'pixels',
-      getColor: (s) => (s[1] ? [239, 75, 91, 235] : basemap === 'dark' ? [46, 230, 166, 150] : [10, 157, 110, 190]),
+      getColor: (s) => (s[1] ? [239, 75, 91, 235] : basemap === 'dark' ? [181, 242, 61, 150] : [10, 157, 110, 190]),
       getWidth: (s) => (s[1] ? 3 : 2), updateTriggers: { getColor: basemap },
     }),
     layers.substations && substations && new ScatterplotLayer<[number, number]>({
@@ -163,11 +163,11 @@ export default function MapPage() {
     }),
     recs && new ScatterplotLayer<Site>({
       id: 'recs-halo', data: recs.sites, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 3000,
-      getFillColor: [46, 230, 166, 35], getLineColor: [46, 230, 166, 190], stroked: true, lineWidthMinPixels: 1,
+      getFillColor: [181, 242, 61, 35], getLineColor: [181, 242, 61, 190], stroked: true, lineWidthMinPixels: 1,
     }),
     recs && new ScatterplotLayer<Site>({
       id: 'recs', data: recs.sites, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 7, radiusUnits: 'pixels',
-      getFillColor: [255, 255, 255, 255], getLineColor: [46, 230, 166, 255], lineWidthMinPixels: 3, stroked: true, pickable: true,
+      getFillColor: [255, 255, 255, 255], getLineColor: [181, 242, 61, 255], lineWidthMinPixels: 3, stroked: true, pickable: true,
     }),
   ].filter(Boolean)
 
@@ -211,17 +211,17 @@ export default function MapPage() {
         {({ Source, Layer }) => layers.chargers && !layers.heat && (
           <Source id="chargers" type="geojson" data={chargerGeo} cluster clusterRadius={42} clusterMaxZoom={11}>
             <Layer id="clusters" type="circle" filter={['has', 'point_count']} paint={{
-              'circle-color': ['step', ['get', 'point_count'], '#19b6d2', 50, '#2ee6a6', 500, '#f5b84a'],
+              'circle-color': ['step', ['get', 'point_count'], '#19b6d2', 50, '#b5f23d', 500, '#f5b84a'],
               'circle-radius': ['step', ['get', 'point_count'], 13, 50, 18, 500, 25],
               'circle-opacity': 0.88, 'circle-stroke-width': 2, 'circle-stroke-color': 'rgba(255,255,255,0.55)',
             }} />
             <Layer id="cluster-count" type="symbol" filter={['has', 'point_count']}
               layout={{ 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Open Sans Bold'] }}
-              paint={{ 'text-color': '#04140e' }} />
+              paint={{ 'text-color': '#0b0b0c' }} />
             <Layer id="charger-pt" type="circle" filter={['!', ['has', 'point_count']]} paint={{
-              'circle-color': ['case', ['==', ['get', 'syn'], 1], '#8ea3b1', ['==', ['get', 'dc'], 1], '#f5b84a', '#2ee6a6'],
+              'circle-color': ['case', ['==', ['get', 'syn'], 1], '#8ea3b1', ['==', ['get', 'dc'], 1], '#f5b84a', '#b5f23d'],
               'circle-radius': ['case', ['==', ['get', 'syn'], 1], 3, 5],
-              'circle-stroke-width': ['case', ['==', ['get', 'syn'], 1], 0, 1.5], 'circle-stroke-color': '#04140e',
+              'circle-stroke-width': ['case', ['==', ['get', 'syn'], 1], 0, 1.5], 'circle-stroke-color': '#0b0b0c',
             }} />
           </Source>
         )}
@@ -345,7 +345,7 @@ function StateCard({ s, d, districts, onBack }: { s: StateRow; d: DistrictRow | 
       <div className="flex items-start justify-between gap-2">
         <div>
           <button onClick={onBack} className="text-xs text-accent hover:underline">← All India</button>
-          <h2 className="text-lg font-bold mt-0.5">{s.state}</h2>
+          <h2 className="text-lg font-semibold mt-0.5">{s.state}</h2>
         </div>
         <SourceBadge type="derived" title="2026 values: official state splits scaled to national 2026 totals" />
       </div>

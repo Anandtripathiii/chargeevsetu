@@ -14,7 +14,7 @@ export function Completeness({ s, link = true }: { s: Summary; link?: boolean })
       </div>
       <div className="grid sm:grid-cols-[auto_minmax(0,1fr)] gap-x-8 gap-y-4 items-center mt-3">
         <div>
-          <p className="text-5xl font-display font-bold tnum text-accent">{pct(share)}</p>
+          <p className="text-5xl font-semibold tracking-[-0.03em] tnum text-accent">{pct(share)}</p>
           <p className="text-sm text-muted mt-1"><b className="text-text tnum">{fmt(s.mapped_chargers)}</b> real mapped chargers of <b className="text-text tnum">{fmt(s.public_chargers)}</b> official</p>
         </div>
         <div className="min-w-0">

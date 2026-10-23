@@ -20,7 +20,7 @@ export default function Methodology() {
 
   return (
     <>
-      <PageHeader eyebrow="Methodology" title="A transparent, defensible method">
+      <PageHeader title="A transparent, defensible method">
         Every number on this site comes from a formula on this page, applied to a dataset on the <Link to="/data-sources" className="text-accent">Data Sources</Link> page.
         All formulas live in one Python module (<code>pipeline/analysis.py</code>), mirrored line for line in the browser (<code>src/lib/model.ts</code>).
         An automated self-check confirms both give the same Gap Score for all {s.districts} districts.
@@ -32,7 +32,7 @@ export default function Methodology() {
             {FLOW.map(([t, d, p], i) => (
               <li key={t} className="flex-1 flex items-center gap-2">
                 <div className="flex-1 h-full rounded-xl border border-line bg-bg-2 p-3">
-                  <div className="text-xs text-accent font-bold tnum">0{i + 1}</div>
+                  <div className="text-xs text-accent font-semibold tnum">0{i + 1}</div>
                   <div className="font-semibold">{t}</div>
                   <p className="text-xs text-muted mt-1 leading-relaxed">{d}</p>
                   <code className="text-[10px] text-muted block mt-2">{p}</code>
