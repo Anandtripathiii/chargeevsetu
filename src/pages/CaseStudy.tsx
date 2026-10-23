@@ -45,7 +45,7 @@ export default function CaseStudy() {
       <Container>
         <section className="card p-6 sm:p-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Case study</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Region deep-dive</div>
             {cases.length > 1 && <Segmented value={slug} onChange={(v) => setParams({ region: v }, { replace: true })} options={cases.map(([s, n]) => [s, n])} />}
           </div>
           <h2 className="text-3xl sm:text-[44px] leading-[1.08] font-semibold tracking-[-0.035em] mt-3 max-w-4xl">{region.name}: from {fmt(region.chargers)} chargers to the network it needs by 2030</h2>

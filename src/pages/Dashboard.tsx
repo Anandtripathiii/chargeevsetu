@@ -72,7 +72,7 @@ export default function Dashboard() {
           <div><div className="text-xs text-muted mb-1.5">States shown</div>
             <Segmented value={topN} onChange={setTopN} options={[['15', 'Top 15'], ['36', 'All 36']]} /></div>
           <label className="block"><span className="text-xs text-muted">Highlight a state</span>
-            <select className="input mt-1 !w-56" value={focus} onChange={(e) => setFocus(e.target.value)}>
+            <select className="input mt-1 !w-56 block" value={focus} onChange={(e) => setFocus(e.target.value)}>
               <option value="">None</option>{states.map((x) => x.state).sort().map((x) => <option key={x}>{x}</option>)}
             </select></label>
         </div>

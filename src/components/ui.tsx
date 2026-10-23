@@ -58,8 +58,8 @@ export const Num = ({ v }: { v: ReactNode }) => (typeof v === 'string' ? <CountU
 export function Kpi({ label, value, sub, source, accent }: { label: string; value: ReactNode; sub?: ReactNode; source?: SourceType; accent?: 'crit' | 'warn' }) {
   return (
     <div className="card p-5 flex flex-col gap-1.5 min-w-0">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted font-medium truncate">{label}</span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs text-muted font-medium leading-snug min-w-0">{label}</span>
         {source && <SourceBadge type={source} />}
       </div>
       <span className={`text-[26px] sm:text-[32px] leading-tight font-semibold tracking-[-0.035em] tnum ${accent === 'crit' ? 'text-crit' : accent === 'warn' ? 'text-warn' : ''}`}><Num v={value} /></span>

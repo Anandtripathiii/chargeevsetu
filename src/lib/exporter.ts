@@ -9,7 +9,7 @@ const emit = () => listeners.forEach((l) => l())
 /** Register this page's export action for the top-bar "Export" pill while the page is mounted. */
 export function useExport(label: string, run: () => void) {
   const fn = useRef(run)
-  fn.current = run
+  useEffect(() => { fn.current = run })
   useEffect(() => {
     const e = { label, run: () => fn.current() }
     current = e

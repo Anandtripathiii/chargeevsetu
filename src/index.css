@@ -79,9 +79,12 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: "cv11", "ss01";
 }
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  letter-spacing: -0.025em;
+@layer base {
+  * { scrollbar-width: thin; scrollbar-color: var(--active) transparent; }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
 }
 .tnum { font-variant-numeric: tabular-nums; }
 /* links inside running text are underlined (not colour-only) */

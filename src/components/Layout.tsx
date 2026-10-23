@@ -82,7 +82,7 @@ const Tip = ({ children }: { children: ReactNode }) => (
 function Sidebar() {
   return (
     <nav aria-label="Main" className="no-print fixed z-50 inset-x-0 bottom-0 h-[68px] p-2 md:inset-x-auto md:left-0 md:top-0 md:h-dvh md:w-[76px] md:p-2.5">
-      <div className="h-full rounded-[20px] bg-panel border border-line shadow-[var(--shadow)] flex md:flex-col items-center gap-1 px-1.5 md:px-0 md:py-3 overflow-x-auto md:overflow-visible">
+      <div className="h-full rounded-[20px] bg-panel border border-line shadow-[var(--shadow)] flex md:flex-col items-center gap-1 px-1.5 md:px-0 md:py-3 overflow-x-auto md:overflow-visible [scrollbar-width:none]">
         <Link to="/" aria-label="ChargeEVSetu home" className="hidden md:grid w-11 h-11 shrink-0 rounded-[14px] place-items-center bg-accent-fill shadow-[0_0_24px_-6px_var(--accent-fill)] mb-4 transition-transform hover:scale-105">
           <LogoMark />
         </Link>
@@ -220,7 +220,7 @@ function PageHeading({ title, s, wide }: { title: string; s?: Summary; wide: boo
     <div className={`${wide ? '' : 'max-w-[1440px] mx-auto'} w-full px-4 md:px-6 pt-2 pb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3`}>
       <h1 className="text-[26px] sm:text-[34px] leading-tight font-semibold tracking-[-0.035em]">{title}</h1>
       <div className="no-print flex flex-wrap items-center gap-2">
-        {s && <span className="pill text-muted"><CalendarDays size={14} />Data {fmtDate(s.generated)}</span>}
+        {s && <span className="pill text-muted !hidden sm:!inline-flex"><CalendarDays size={14} />Data {fmtDate(s.generated)}</span>}
         <button className="pill" onClick={share}><Share2 size={14} />{copied ? 'Link copied' : 'Share report'}</button>
         <button className="pill pill-primary" onClick={exp.run}><Download size={14} />{exp.label}</button>
       </div>
