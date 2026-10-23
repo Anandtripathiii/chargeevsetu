@@ -142,7 +142,8 @@ export function useHomeChargers(): HomeCharger[] | null {
     sb().then(async (c) => {
       const load = async () => { const { data } = await c.from('home_chargers').select('*').order('created_at'); if (live && data) setList(data as HomeCharger[]) }
       await load()
-      const ch = c.channel(`home_chargers-${uid()}`) // unique per hook: removeChannel must not close another listener's channel.on('postgres_changes', { event: '*', schema: 'public', table: 'home_chargers' }, load).subscribe()
+      // unique name per hook: removeChannel must not close another listener's channel
+      const ch = c.channel(`home_chargers-${uid()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'home_chargers' }, load).subscribe()
       off = () => { c.removeChannel(ch) }
     })
     return () => { live = false; off() }
