@@ -6,6 +6,7 @@ import { buildRegions } from '../../lib/regions'
 
 // charts + map are heavy: the header and region picker render first
 const Planner = lazy(() => import('../components/Planner'))
+const GapWeights = lazy(() => import('../components/GapWeights'))
 
 export default function Estimation() {
   const [params, setParams] = useSearchParams()
@@ -36,6 +37,7 @@ export default function Estimation() {
           <>
             <h2 className="hidden print:block text-2xl font-semibold mb-2">ChargeEVSetu planning report · {region.name}</h2>
             <Suspense fallback={<PageSkeleton />}><Planner key={region.slug} region={region} forecast={forecast} /></Suspense>
+            <div className="mt-4"><Suspense fallback={null}><GapWeights /></Suspense></div>
           </>
         )}
       </Container>

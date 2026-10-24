@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import Coverage from '../components/Coverage'
 import { Link } from 'react-router-dom'
 import {
   Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, ReferenceLine, ResponsiveContainer,
@@ -180,6 +181,8 @@ export default function Dashboard() {
             </ol>
           </div>
         </div>
+
+        <Coverage />
 
         <div className="card p-4">
           <CardTitle right={<SourceBadge type="real" />}>Data quality: chargers mapped in OpenStreetMap vs the official count (15 largest states)</CardTitle>

@@ -14,6 +14,7 @@ import { css, GAP, gradient, MAGMA, quantileScale, ramp, VIRIDIS } from '../../l
 import { compact, fmt, pct } from '../../lib/format'
 import { greedySites, parseCells, VEHICLE_TYPES, type Site } from '../../lib/model'
 import { tooltipBox } from '../../lib/tooltip'
+import { stationIndex, type IndexRow } from '../../lib/stations'
 import { downloadCsv } from '../../lib/csv'
 import { useExport } from '../../lib/exporter'
 
@@ -61,8 +62,11 @@ export default function MapPage() {
   const [metric, setMetric] = useState<Metric>((params.get('metric') as Metric) || 'gap')
   const [layers, setLayers] = useState({
     chargers: true, modelled: false, heat: false, highways: params.get('layer') === 'highways',
-    substations: false, population: false, recs: params.get('layer') === 'recs',
+    substations: false, population: false, recs: params.get('layer') === 'recs', osm: false, ocm: false, hubs: false,
   })
+  const [srcRows, setSrcRows] = useState<IndexRow[]>([])
+  useEffect(() => { if ((layers.osm || layers.ocm) && !srcRows.length) stationIndex().then(setSrcRows, () => {}) }, [layers.osm, layers.ocm, srcRows.length])
+  const { data: hubAreas } = useData<{ lon: number; lat: number; city: string; riders: number }[]>(layers.hubs ? 'hubs.json' : null)
   const [arcsOn, setArcsOn] = useState(true)
   const set = (k: keyof typeof layers) => (v: boolean) => setLayers((l) => ({ ...l, [k]: v }))
   const [view, setView] = useState<'states' | 'layers'>('states')
@@ -237,6 +241,15 @@ export default function MapPage() {
       id: 'arcs', data: arcPaths, getPath: (a) => a.path, widthUnits: 'pixels', getWidth: 2.2, capRounded: true, pickable: true,
       getColor: (a) => (a.gapKm < GAP_ROUTE_KM ? (basemap === 'dark' ? [181, 242, 61, 235] : [77, 124, 15, 235]) : [255, 92, 100, 235]),
       updateTriggers: { getColor: basemap },
+    }),
+    (layers.osm || layers.ocm) && new ScatterplotLayer<IndexRow>({
+      id: 'by-source', data: srcRows.filter((r) => (r[0].startsWith('ocm') ? layers.ocm : layers.osm)), getPosition: (r) => [r[3], r[4]],
+      radiusUnits: 'pixels', getRadius: 3.5, stroked: true, lineWidthMinPixels: 1, getLineColor: [255, 255, 255, 200],
+      getFillColor: (r) => (r[0].startsWith('ocm') ? [59, 130, 246, 230] : [34, 197, 94, 230]), updateTriggers: { getFillColor: [layers.osm, layers.ocm] },
+    }),
+    layers.hubs && hubAreas && new ScatterplotLayer({
+      id: 'hub-areas', data: hubAreas, getPosition: (h: { lon: number; lat: number }) => [h.lon, h.lat], radiusUnits: 'meters', getRadius: 700,
+      getFillColor: [249, 115, 22, 150], stroked: true, getLineColor: [194, 65, 12, 255], lineWidthMinPixels: 1,
     }),
     recs && new ScatterplotLayer<Site>({
       id: 'recs-halo', data: recs.sites, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 3000,
@@ -413,6 +426,9 @@ export default function MapPage() {
                 )}
                 <Toggle on={layers.highways} set={set('highways')} label="National highways · gaps in red" badge="real"
                   sub={summary?.nh_km_mapped ? `${fmt(summary.nh_gap_km)} of ${fmt(summary.nh_km_mapped)} km have no charger for 25 km` : undefined} />
+                <Toggle on={layers.osm} set={set('osm')} label="Chargers by source: OpenStreetMap (green)" badge="real" />
+                <Toggle on={layers.ocm} set={set('ocm')} label="Chargers by source: Open Charge Map (blue)" badge="real" />
+                <Toggle on={layers.hubs} set={set('hubs')} label="Delivery hub areas (orange)" badge="derived" sub="Dense urban cells likely to host delivery dark stores" />
                 <Toggle on={layers.substations} set={set('substations')} label="Power substations (grid readiness)" badge="real" />
                 <Toggle on={layers.population} set={set('population')} label="Population density" badge="real" />
                 <Toggle on={layers.recs} set={set('recs')} label="Recommended new sites" badge="derived"
