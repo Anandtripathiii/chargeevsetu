@@ -77,29 +77,90 @@ const setUser = (u: User | null) => { current = u; authSubs.forEach((f) => f()) 
 const toUser = (u: { id: string; email?: string; user_metadata?: Record<string, string> } | null | undefined): User | null =>
   u ? { id: u.id, email: u.email ?? '', name: u.user_metadata?.full_name || u.user_metadata?.name || (u.email ?? '').split('@')[0] } : null
 
+// Password-recovery links land back here; the dialog then asks for a new password.
+let recovering = false
+const recSubs = new Set<() => void>()
+const setRecovering = (v: boolean) => { recovering = v; recSubs.forEach((f) => f()) }
+export const endRecovery = () => setRecovering(false)
+export const useRecovering = () => useSyncExternalStore((f) => (recSubs.add(f), () => recSubs.delete(f)), () => recovering)
+
+/** Errors from a link in an email (expired, already used …), read once from the URL hash. */
+export const linkError: string | null = (() => {
+  const h = new URLSearchParams(location.hash.slice(1))
+  const e = h.get('error_description') || h.get('error')
+  if (!e) return null
+  history.replaceState(null, '', location.pathname + location.search)
+  return /expired|invalid/i.test(e) ? 'That email link has expired or was already used. Please ask for a new one.' : e.replace(/\+/g, ' ')
+})()
+
 if (!DEMO) sb().then((c) => {
   c.auth.getSession().then(({ data }) => setUser(toUser(data.session?.user)))
-  c.auth.onAuthStateChange((_e, s) => setUser(toUser(s?.user)))
+  c.auth.onAuthStateChange((e, s) => { setUser(toUser(s?.user)); if (e === 'PASSWORD_RECOVERY') setRecovering(true) })
 })
 
 export function useUser(): User | null {
   return useSyncExternalStore((f) => (authSubs.add(f), () => authSubs.delete(f)), () => current)
 }
 
+/** Supabase error -> a sentence a first-time visitor understands. */
+export function friendly(err: unknown): string {
+  const m = (err as { message?: string })?.message ?? String(err)
+  if (/invalid login credentials/i.test(m)) return 'Wrong email or password. Try again, or use “Forgot password?”.'
+  if (/email not confirmed/i.test(m)) return 'Please confirm your email first: open the link we sent you (check spam too).'
+  if (/already registered|already exists/i.test(m)) return 'This email already has an account. Please log in instead.'
+  if (/rate limit|too many|security purposes/i.test(m)) return 'Too many tries. Please wait a minute and try again.'
+  if (/provider is not enabled|unsupported provider/i.test(m)) return 'Google login is not turned on yet. Please use your email.'
+  if (/password.*(at least|short|weak)/i.test(m)) return 'Password must be at least 6 characters.'
+  if (/signups? not allowed/i.test(m)) return 'New sign-ups are closed right now.'
+  if (/failed to fetch|network/i.test(m)) return 'Cannot reach the server. Please check your internet and try again.'
+  return m
+}
+const wrap = async <R extends { data: unknown; error: unknown }>(p: Promise<R>): Promise<R['data']> => { const r = await p; if (r.error) throw new Error(friendly(r.error)); return r.data }
+const home = () => location.origin + import.meta.env.BASE_URL
+
+/** Which sign-in methods the Supabase project has switched on (Google only shows when enabled). */
+export async function authProviders(): Promise<{ google: boolean }> {
+  if (DEMO) return { google: true }
+  try { const j = await (await fetch(`${URL_}/auth/v1/settings`, { headers: { apikey: KEY! } })).json(); return { google: !!j.external?.google } }
+  catch { return { google: false } }
+}
+
+const demoLogin = (email: string, name?: string) => { db.user = { id: `u-${email}`, email, name: name || email.split('@')[0] }; save(); setUser(db.user) }
+
 export async function signInEmail(email: string): Promise<'sent' | 'signed-in'> {
-  if (DEMO) { db.user = { id: `u-${email}`, email, name: email.split('@')[0] }; save(); setUser(db.user); return 'signed-in' }
-  const { error } = await (await sb()).auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } })
-  if (error) throw error
+  if (DEMO) { demoLogin(email); return 'signed-in' }
+  await wrap((await sb()).auth.signInWithOtp({ email, options: { emailRedirectTo: home() } }))
   return 'sent'
 }
+export async function signInPassword(email: string, password: string) {
+  if (DEMO) return demoLogin(email)
+  await wrap((await sb()).auth.signInWithPassword({ email, password }))
+}
+/** 'confirm' when the project needs the visitor to click the email link first. */
+export async function signUp(email: string, password: string, name: string): Promise<'confirm' | 'signed-in'> {
+  if (DEMO) { demoLogin(email, name); return 'signed-in' }
+  const d = await wrap((await sb()).auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: home() } }))
+  // Supabase returns a user with no identities when the email is already registered (to avoid leaking accounts)
+  if (d.user && !d.user.identities?.length) throw new Error(friendly('already registered'))
+  return d.session ? 'signed-in' : 'confirm'
+}
+export async function resetPassword(email: string) {
+  if (DEMO) return
+  await wrap((await sb()).auth.resetPasswordForEmail(email, { redirectTo: home() }))
+}
+export async function updatePassword(password: string) {
+  if (DEMO) { setRecovering(false); return }
+  await wrap((await sb()).auth.updateUser({ password }))
+  setRecovering(false)
+}
 export async function signInGoogle() {
-  if (DEMO) return signInEmail('demo.user@gmail.com')
-  const { error } = await (await sb()).auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href } })
-  if (error) throw error
+  if (DEMO) return void demoLogin('demo.user@gmail.com')
+  await wrap((await sb()).auth.signInWithOAuth({ provider: 'google', options: { redirectTo: home() } }))
 }
 export async function signOut() {
   if (DEMO) { db.user = null; save(); setUser(null); return }
-  await (await sb()).auth.signOut()
+  const { error } = await (await sb()).auth.signOut()
+  if (error) setUser(null) // local sign-out still clears this tab
 }
 const need = () => { if (!current) throw new Error('Please log in first'); return current }
 
