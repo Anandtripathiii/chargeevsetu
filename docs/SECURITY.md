@@ -7,7 +7,7 @@ For a step-by-step emergency checklist see [INCIDENT_RESPONSE.md](INCIDENT_RESPO
 
 | Area | Protection |
 |---|---|
-| **Secrets** | Browser code uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (public by design). The `service_role` key is used only by `scripts/backup-db.mjs` / `scripts/security-tests.mjs` on your own machine (`.env.local`) and, optionally, as a **server-only** Vercel variable for the admin API/middleware. `.env` and `.env.*` are git-ignored (except `.env.example`, placeholders only). |
+| **Secrets** | Browser code uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, which holds the **publishable** key (`sb_publishable_…`, public by design; a legacy anon JWT also works). `npm run build` fails, and the app refuses to connect, if that variable ever holds a secret key. The secret key (`sb_secret_…`) lives in `SUPABASE_SERVICE_ROLE_KEY`; raw REST calls send it only in the `apikey` header (it is not a JWT). The `service_role` key is used only by `scripts/backup-db.mjs` / `scripts/security-tests.mjs` on your own machine (`.env.local`) and, optionally, as a **server-only** Vercel variable for the admin API/middleware. `.env` and `.env.*` are git-ignored (except `.env.example`, placeholders only). |
 | **Database** | Row Level Security is on (and forced) for every table. Users read and change only their own rows; public data is read-only; `verified` and every role-like field can only be changed with the service role. Bookings can only be cancelled, never edited. CHECK constraints limit lengths (review ≤ 1000, names ≤ 100), rating 1–5, price ₹5–30/kWh, valid statuses, coordinates inside India. |
 | **Spam** | Database triggers: ≤ 5 reviews, 5 reports, 10 bookings per user per hour; ≤ 5 charger listings per day; ≤ 3 install requests per phone per day. Optional Cloudflare Turnstile CAPTCHA on sign-up, login and reset. |
 | **Privacy** | Exact host addresses live in `home_charger_private`, readable only by the host and by drivers with a confirmed booking. Public listings show coordinates rounded to ~500 m (enforced by a trigger). No emails or phone numbers are exposed by any public query; list queries return at most 100 rows. Users can delete their account and all their data. |
@@ -22,7 +22,7 @@ For a step-by-step emergency checklist see [INCIDENT_RESPONSE.md](INCIDENT_RESPO
 
 Rotate immediately if a key may have leaked (committed, pasted in chat, shown on screen, laptop lost).
 
-1. **Supabase anon / service_role keys:** Supabase Dashboard → Project Settings → API → *JWT keys / API keys* → roll the key (newer projects: create a new secret/publishable key and revoke the old one). Rolling the JWT secret logs every user out.
+1. **Supabase keys:** Dashboard → Project Settings → API Keys. Create a new `sb_secret_` (or `sb_publishable_`) key, update it everywhere (step 2), then **delete the old key**. New-style keys rotate one at a time without logging users out. After moving to the new keys, *disable the legacy JWT-based keys* (anon / service_role) on the same page so an old leaked JWT stops working.
 2. Update the new values in:
    - Vercel → Project → Settings → Environment Variables (`VITE_SUPABASE_ANON_KEY`; `SUPABASE_SERVICE_ROLE_KEY` only if you use the admin API), then **Redeploy**.
    - your local `.env` / `.env.local`.

@@ -1,6 +1,6 @@
 /**
  * One small API for reviews, reports, accounts and Plugsy. Talks to Supabase when VITE_SUPABASE_URL /
- * VITE_SUPABASE_ANON_KEY are set; otherwise "Demo mode": the same calls backed by localStorage, with
+ * VITE_SUPABASE_ANON_KEY (the sb_publishable_ key, or a legacy anon JWT) are set; otherwise "Demo mode": the same calls backed by localStorage, with
  * live updates between tabs over BroadcastChannel. Supabase's client is imported lazily (not in the first bundle).
  */
 import { useEffect, useState, useSyncExternalStore } from 'react'
@@ -10,7 +10,10 @@ import { check } from './validate'
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-export const DEMO = !URL_ || !KEY
+// A secret key (sb_secret_… or a service_role JWT) must never ship to browsers: refuse it and fall back to Demo mode.
+const SECRET = !!KEY && (KEY.startsWith('sb_secret_') || /"role"\s*:\s*"service_role"/.test((() => { try { return atob(KEY.split('.')[1] ?? '') } catch { return '' } })()))
+if (SECRET) console.error('VITE_SUPABASE_ANON_KEY holds a SECRET key. Use the sb_publishable_ key; the secret key must stay server-side.')
+export const DEMO = !URL_ || !KEY || SECRET
 
 let client: Promise<SupabaseClient> | null = null
 /** Retries reads (and any request that never reached the server) twice, so a brief Supabase hiccup is invisible. */

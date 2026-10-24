@@ -44,7 +44,8 @@ async function recordFail(ip: string, user: string) {
   // optional: keep a record for the admin Security page
   const sb = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (sb && key) await fetch(`${sb}/rest/v1/admin_events`, {
-    method: 'POST', headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    // sb_secret_ keys: apikey header only; legacy JWT keys also as Bearer
+    method: 'POST', headers: { apikey: key, ...(key.startsWith('eyJ') ? { Authorization: `Bearer ${key}` } : {}), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ kind: 'admin_login_failed', ip, detail: user.slice(0, 40) }),
   }).catch(() => {})
 }

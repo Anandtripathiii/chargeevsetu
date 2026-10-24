@@ -6,7 +6,8 @@ export const config = { runtime: 'edge' }
 const URL_ = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
-const h = () => ({ apikey: KEY!, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' })
+// New sb_secret_ keys go in `apikey` only (they are not JWTs); legacy service_role JWTs also need the Bearer header.
+const h = (): Record<string, string> => ({ apikey: KEY!, ...(KEY!.startsWith('eyJ') ? { Authorization: `Bearer ${KEY}` } : {}), 'Content-Type': 'application/json' })
 const rest = async (path: string, init: RequestInit = {}) => {
   const r = await fetch(`${URL_}/rest/v1/${path}`, { ...init, headers: { ...h(), ...(init.headers ?? {}) } })
   return r.ok ? r.json().catch(() => null) : null

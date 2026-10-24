@@ -70,6 +70,14 @@ const csp = JSON.parse(fs.readFileSync('vercel.json', 'utf8')).headers.find((h) 
 for (const f of ['index.html', 'admin/index.html']) for (const h of sha(f)) if (!csp.includes(h)) fail(`${f}: inline script hash ${h} missing from the CSP in vercel.json`)
 if (!fs.readFileSync('netlify.toml', 'utf8').includes(csp)) fail('netlify.toml CSP differs from vercel.json')
 
+// 5. never bundle a secret Supabase key into the browser build (VITE_* values are public)
+const envVal = (k) => process.env[k] ?? ['.env', '.env.local', '.env.production', '.env.production.local'].filter((f) => fs.existsSync(f))
+  .map((f) => new RegExp(`^${k}=(.*)$`, 'm').exec(fs.readFileSync(f, 'utf8'))?.[1]?.trim().replace(/^"|"$/g, '')).filter(Boolean).pop()
+const pub = envVal('VITE_SUPABASE_ANON_KEY') ?? ''
+const jwtRole = (() => { try { return JSON.parse(Buffer.from(pub.split('.')[1] ?? '', 'base64url').toString()).role } catch { return null } })()
+if (pub.startsWith('sb_secret_') || jwtRole === 'service_role') fail('VITE_SUPABASE_ANON_KEY is a SECRET key: use the sb_publishable_ key (VITE_* values are shipped to every browser)')
+else if (pub && !pub.startsWith('sb_publishable_') && jwtRole !== 'anon') fail('VITE_SUPABASE_ANON_KEY is neither an sb_publishable_ key nor a legacy anon JWT')
+
 if (errors.length) {
   console.error(`DATA CHECK FAILED (${errors.length}):\n- ${errors.slice(0, 30).join('\n- ')}`)
   process.exit(1)
