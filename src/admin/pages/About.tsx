@@ -1,11 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Container, PageHeader } from '../../components/ui'
 import { TEAM } from '../team'
 
 const LIBS = [
-  ['React 19, React Router 7, Vite, TypeScript', 'MIT'], ['Framer Motion, Lucide icons', 'MIT / ISC'], ['Tailwind CSS 4', 'MIT'], ['MapLibre GL JS 5', 'BSD-3'], ['deck.gl 9 (layers, aggregation, MapLibre overlay)', 'MIT'],
+  ['React 19, React Router 7, Vite, TypeScript', 'MIT'], ['Framer Motion, Lucide icons', 'MIT / ISC'], ['Tailwind CSS 4', 'MIT'], ['MapLibre GL JS 6', 'BSD-3'], ['deck.gl 9 (layers, aggregation, MapLibre overlay)', 'MIT'],
   ['react-map-gl 8', 'MIT'], ['Recharts 3', 'MIT'], ['pandas, GeoPandas, Shapely, SciPy, NumPy, rasterio, pypdf, requests', 'BSD / MIT / Apache-2.0'],
-  ['CARTO basemaps (dark-matter, positron)', 'CARTO terms; © OSM contributors'], ['Inter (self-hosted via Fontsource)', 'OFL'],
+  ['OpenFreeMap "liberty" vector tiles', 'OpenFreeMap terms; © OpenMapTiles, © OSM contributors'], ['Inter (self-hosted via Fontsource)', 'OFL'],
 ]
 const DATA = [
   'Press Information Bureau: state-wise public EV charging stations (Ministry of Power inputs, Aug 2025); state-wise registered EVs (VAHAN, 03-Aug-2023)',
@@ -13,7 +14,7 @@ const DATA = [
   'OpenStreetMap via Overpass API: charging stations, national highways, substations, fuel stations, malls, attractions, logistics (ODbL)',
   'Census of India 2011 district tables; DataMeet Census-2011 district boundaries (CC BY 2.5 IN)',
   'WorldPop 2020 1 km population grid, UN-adjusted (CC BY 4.0)',
-  'Open Charge Map (CC BY 4.0) when an API key is configured',
+  'Open Charge Map (CC BY 4.0): open export of India POIs, or the API when a key is configured',
 ]
 
 export default function About() {
@@ -35,7 +36,7 @@ export default function About() {
           <ul className="mt-4 grid sm:grid-cols-2 gap-3">
             {TEAM.members.map(([n, role]) => (
               <li key={n} className="rounded-xl border border-line p-3 flex items-center gap-3">
-                <span aria-hidden className="w-10 h-10 shrink-0 rounded-full bg-accent/15 text-accent grid place-items-center font-semibold">{n.split(' ').map((w) => w[0]).join('')}</span>
+                <Avatar name={n} />
                 <div><div className="font-medium text-sm">{n}</div><div className="text-xs text-muted">{role}</div></div>
               </li>
             ))}
@@ -63,4 +64,16 @@ export default function About() {
       </Container>
     </>
   )
+}
+
+/** Team photo from the private bucket via a short-lived signed URL (admin API); initials if it cannot load. */
+function Avatar({ name }: { name: string }) {
+  const [failed, setFailed] = useState(false)
+  const initials = name.split(' ').map((w) => w[0]).join('')
+  const key = name.split(' ')[0].toLowerCase()
+  const ring = 'w-10 h-10 shrink-0 rounded-full ring-2 ring-accent/40 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.35)]'
+  return failed
+    ? <span aria-hidden className={`${ring} bg-accent/15 text-accent grid place-items-center font-semibold`}>{initials}</span>
+    : <img src={`/api/admin/team-photo?name=${encodeURIComponent(key)}`} alt={`Photo of ${name}`} width={40} height={40} loading="lazy" decoding="async"
+        referrerPolicy="no-referrer" className={`${ring} object-cover bg-accent/15`} onError={() => setFailed(true)} />
 }

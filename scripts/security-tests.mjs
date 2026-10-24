@@ -40,6 +40,20 @@ await test('public listings expose no email/phone/address columns', async () => 
 })
 await test('anon cannot call delete_my_account', async () => !!(await anon.rpc('delete_my_account')).error)
 await test('anon cannot list users (auth admin API)', async () => !!(await anon.auth.admin.listUsers()).error)
+await test('team photos: anon cannot list, download or sign', async () => {
+  const l = await anon.storage.from('team-photos').list()
+  const d = await anon.storage.from('team-photos').download('anand.webp')
+  const g = await anon.storage.from('team-photos').createSignedUrl('anand.webp', 60)
+  const p = await fetch(`${URL_}/storage/v1/object/public/team-photos/anand.webp`)
+  return (l.error || !l.data?.length) && !!d.error && !!g.error && !p.ok
+})
+if (admin) await test('team photos: signed URL stops working after it expires', async () => {
+  const s = await admin.storage.from('team-photos').createSignedUrl('anand.webp', 1)
+  if (s.error) return `no photo uploaded yet (${s.error.message})`
+  await new Promise((ok) => setTimeout(ok, 3000))
+  const r = await fetch(s.data.signedUrl)
+  return r.status >= 400 && r.status < 500
+})
 await test('anon cannot insert a review', async () => !!(await anon.from('reviews').insert({ station_id: 'sec-test', rating: 5, body: 'x', author: 'x', user_id: '00000000-0000-0000-0000-000000000000' })).error)
 
 if (!admin) {

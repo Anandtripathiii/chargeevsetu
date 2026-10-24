@@ -39,3 +39,7 @@ data/raw/naturalearth/
 # large re-downloadable inputs (see README "Refresh the data"); public/data/ stays committed so the site works
 data/raw/worldpop/
 data/raw/boundaries/
+
+# team photos are private (Supabase bucket "team-photos"), never in git
+public/team/
+team-photos/

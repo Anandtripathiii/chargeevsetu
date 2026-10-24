@@ -13,7 +13,8 @@
     "check-data": "node scripts/check-data.mjs",
     "backup": "node scripts/backup-db.mjs",
     "security-test": "node scripts/security-tests.mjs",
-    "serve:prod": "node scripts/serve-prod.mjs"
+    "serve:prod": "node scripts/serve-prod.mjs",
+    "upload-team-photos": "node scripts/upload-team-photos.mjs"
   },
   "dependencies": {
     "@deck.gl/aggregation-layers": "^9.4.0",
@@ -41,6 +42,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.88.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
