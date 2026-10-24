@@ -32,31 +32,13 @@ export interface InstallRequest { name: string; phone: string; city: string; kin
 // ---------------- demo store ----------------
 const now = () => new Date().toISOString()
 const uid = () => Math.random().toString(36).slice(2, 10)
-const LS = 'evsetu-demo-v1'
+const LS = 'evsetu-demo-v2'
 interface DemoDB { user: User | null; reviews: Review[]; reports: unknown[]; chargers: HomeCharger[]; bookings: Booking[]; installs: unknown[]; addresses: Record<string, string> }
 
-// Sample listings so Plugsy is explorable without a backend; shown only in Demo mode.
-const SEED: [string, string, number, number, 'AC' | 'DC', number, string, number, PlugStatus][] = [
-  ['Covered parking, Type 2 wallbox', 'Saket, Delhi', 77.216, 28.524, 'AC', 7.4, 'Type 2', 14, 'free'],
-  ['Society basement charger', 'Dwarka Sec 10, Delhi', 77.058, 28.581, 'AC', 3.3, '15A socket', 10, 'busy'],
-  ['Farmhouse DC charger', 'Gurugram Sec 57', 77.081, 28.423, 'DC', 30, 'CCS2', 21, 'free'],
-  ['Villa garage charger', 'Whitefield, Bengaluru', 77.75, 12.97, 'AC', 7.4, 'Type 2', 13, 'free'],
-  ['Office lot (evenings)', 'Koramangala, Bengaluru', 77.627, 12.935, 'AC', 11, 'Type 2', 15, 'booked'],
-  ['Bungalow charger', 'Baner, Pune', 73.786, 18.559, 'AC', 7.4, 'Type 2', 12, 'free'],
-  ['Shop front 2W charging', 'Andheri West, Mumbai', 72.836, 19.136, 'AC', 3.3, '15A socket', 9, 'free'],
-  ['Highway dhaba DC', 'Lonavala, Pune Expressway', 73.407, 18.754, 'DC', 25, 'CCS2', 19, 'offline'],
-  ['Gated community wallbox', 'Gachibowli, Hyderabad', 78.349, 17.44, 'AC', 7.4, 'Type 2', 12, 'free'],
-  ['Independent house charger', 'Anna Nagar, Chennai', 80.209, 13.085, 'AC', 3.3, '15A socket', 10, 'busy'],
-  ['Cafe parking charger', 'Salt Lake, Kolkata', 88.417, 22.58, 'AC', 7.4, 'Type 2', 13, 'free'],
-  ['Clinic parking charger', 'Vaishali Nagar, Jaipur', 75.743, 26.911, 'AC', 7.4, 'Type 2', 11, 'free'],
-]
 function seed(): DemoDB {
   return {
     user: null, reviews: [], reports: [], bookings: [], installs: [], addresses: {},
-    chargers: SEED.map(([title, area, lon, lat, type, power_kw, connector, price_kwh, status], i) => ({
-      id: `demo-${i}`, host_id: `host-${i}`, host_name: ['Aarav', 'Meera', 'Kabir', 'Isha', 'Rohan', 'Ananya'][i % 6], title, area, lon, lat, type, power_kw,
-      connector, price_kwh, hours: '7:00–22:00', status, verified: i % 4 !== 3, photos: [], created_at: now(),
-    })),
+    chargers: [], // sample listings come from lib/plugsy.ts in every mode
   }
 }
 let db: DemoDB = (() => { try { return { ...seed(), ...JSON.parse(localStorage.getItem(LS) || '{}') } } catch { return seed() } })()
@@ -248,7 +230,8 @@ export async function addHomeCharger(c: Omit<HomeCharger, 'id' | 'host_id' | 'ho
 export async function createBooking(ch: HomeCharger, start_at: string, hours: number): Promise<Booking> {
   const u = need()
   const amount = Math.round(ch.power_kw * hours * ch.price_kwh * 0.9 + 10) // ~90% of rated power on average + ₹10 platform fee
-  if (DEMO) {
+  // sample (pilot demo) listings are booked locally even when Supabase is connected
+  if (DEMO || ch.id.startsWith('sample-')) {
     const b: Booking = { id: uid(), charger_id: ch.id, user_id: u.id, start_at, hours, amount, status: 'confirmed', payment: 'demo', created_at: now(), address: db.addresses[ch.id] ?? `${ch.area} (exact address shared by host)` }
     db.bookings.push(b)
     const c = db.chargers.find((x) => x.id === ch.id); if (c && c.status === 'free') c.status = 'booked'
@@ -278,7 +261,8 @@ export function useBookings(): { mine: Booking[]; hosting: Booking[] } | null {
       const { data } = await c.from('bookings_view').select('*').order('start_at', { ascending: false })
       if (!live || !data) return
       const rows = data as (Booking & { host_id: string })[]
-      setRes({ mine: rows.filter((b) => b.user_id === u.id), hosting: rows.filter((b) => b.host_id === u.id) })
+      const local = db.bookings.filter((b) => b.user_id === u.id) // pilot-demo bookings on sample listings
+      setRes({ mine: [...local, ...rows.filter((b) => b.user_id === u.id)], hosting: rows.filter((b) => b.host_id === u.id) })
     })
     return () => { live = false }
   }, [u])

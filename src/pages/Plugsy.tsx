@@ -1,47 +1,60 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BadgeCheck, CalendarCheck, CreditCard, EyeOff, Flag, Home, IndianRupee, LocateFixed, MapPin, Plug, PlugZap, ShieldCheck, Wrench, Zap } from 'lucide-react'
+import type { PickingInfo } from '@deck.gl/core'
+import { CalendarCheck, Camera, ChevronRight, CreditCard, EyeOff, Flag, Home, IndianRupee, LocateFixed, MapPin, Plug, PlugZap, Search, ShieldCheck, Wallet, Wrench, X, Zap } from 'lucide-react'
+import MapBase from '../components/LazyMap'
+import type { MapBaseHandle } from '../components/mapUtil'
+import { useTheme } from '../lib/theme'
+import { tooltipBox } from '../lib/tooltip'
+import { useLiveStatus, useSamples, type Listing } from '../lib/plugsy'
 import { toast } from 'sonner'
 import { Container, PageHeader, Skeleton } from '../components/ui'
 import { Modal, openLogin, useRequireLogin } from '../components/Account'
 import {
-  addHomeCharger, createBooking, DEMO, PRICE_LIMITS, requestInstall, setChargerStatus, useBookings, useHomeChargers, useUser,
+  addHomeCharger, createBooking, PRICE_LIMITS, requestInstall, setChargerStatus, useBookings, useHomeChargers, useUser,
   type Booking, type HomeCharger, type InstallRequest, type PlugStatus,
 } from '../lib/backend'
 import { haversineKm } from '../lib/model'
 import { kmText } from '../lib/stations'
 import { fmt } from '../lib/format'
 
-const TABS = [['find', 'Find a charger'], ['bookings', 'My bookings'], ['host', 'Become a host'], ['install', 'Get one installed']] as const
+const MapPage = lazy(() => import('./MapPage'))
+
+const TABS = [['public', 'Public stations'], ['home', 'Home chargers (Plugsy)'], ['bookings', 'My bookings'], ['host', 'Host a charger'], ['install', 'Get one installed']] as const
 type Tab = (typeof TABS)[number][0]
 const COMMISSION = 0.15
 /** value for <input type=datetime-local>, in the visitor's local time */
 const localInput = (t: number) => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) }
 
-const STATUS: Record<PlugStatus, [string, string]> = {
-  free: ['Free', 'text-ok border-ok/30 bg-ok/10'], busy: ['Busy', 'text-warn border-warn/30 bg-warn/10'],
-  booked: ['Booked', 'text-crit border-crit/30 bg-crit/10'], offline: ['Offline', 'text-muted border-line bg-active'],
+const STATUS: Record<PlugStatus, [string, string, [number, number, number]]> = {
+  free: ['Free', 'text-ok border-ok/30 bg-ok/10', [22, 163, 74]], busy: ['Busy', 'text-[#c2410c] border-[#f97316]/40 bg-[#f97316]/10', [249, 115, 22]],
+  booked: ['Booked', 'text-[#1d4ed8] border-[#2563eb]/40 bg-[#2563eb]/10', [37, 99, 235]], offline: ['Offline', 'text-muted border-line bg-active', [148, 163, 184]],
 }
-const Status = ({ s }: { s: PlugStatus }) => <span className={`chip ${STATUS[s][1]}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{STATUS[s][0]}</span>
+const Status = ({ s, mins }: { s: PlugStatus; mins?: number }) => (
+  <span className={`chip ${STATUS[s][1]}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{STATUS[s][0]}{s === 'busy' && mins ? ` · free in ~${mins} min` : ''}</span>
+)
+const rgb = (s: PlugStatus) => `rgb(${STATUS[s][2].join(',')})`
 
 export default function Plugsy() {
   const [params, setParams] = useSearchParams()
-  const tab = (TABS.some(([t]) => t === params.get('tab')) ? params.get('tab') : 'find') as Tab
-  const setTab = (t: Tab) => setParams(t === 'find' ? {} : { tab: t }, { replace: true })
+  const tab = (TABS.some(([t]) => t === params.get('tab')) ? params.get('tab') : 'home') as Tab
+  const setTab = (t: Tab) => setParams(t === 'home' ? {} : { tab: t }, { replace: true })
   return (
     <>
-      <PageHeader title={<span className="flex items-center gap-2"><PlugZap className="text-accent" />Plugsy: charge at a neighbour’s</span>}>
-        Book a home charger near you, or share yours and earn. Hosts are verified and exact addresses are shared only after booking.
-        {DEMO && <span className="block mt-1 text-warn text-xs">Demo mode: listings are samples and payments are not real.</span>}
+      <PageHeader title={<span className="flex items-center gap-2"><PlugZap className="text-accent" />Plugsy: all charging in one place</span>}>
+        Find a <b className="text-text">public charging station</b>, or book a <b className="text-text">neighbour’s home charger</b> nearby. Hosts share their charger and earn. Exact addresses are shared only after booking.
       </PageHeader>
       <Container className="space-y-5">
+        <HowItWorks />
         <div className="flex gap-1 overflow-x-auto rounded-full border border-line bg-panel p-1 w-fit max-w-full [scrollbar-width:none]" role="tablist">
           {TABS.map(([t, l]) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-sm rounded-full whitespace-nowrap transition-colors ${tab === t ? 'bg-accent-fill text-[#0b0b0c] font-semibold' : 'text-muted hover:text-text'}`}>{l}</button>
           ))}
         </div>
-        {tab === 'find' && <Find />}
+        {tab === 'public' && <div className="flex flex-col"><Suspense fallback={<Skeleton className="h-[620px]" />}><MapPage embedded /></Suspense>
+          <p className="text-xs text-muted mt-2">Real public stations from OpenStreetMap and Open Charge Map: same data as the main EV map.</p></div>}
+        {tab === 'home' && <HomeChargers />}
         {tab === 'bookings' && <MyBookings />}
         {tab === 'host' && <Host />}
         {tab === 'install' && <Install />}
@@ -51,46 +64,142 @@ export default function Plugsy() {
   )
 }
 
-function Find() {
-  const list = useHomeChargers()
+function HowItWorks() {
+  const Row = ({ who, steps }: { who: string; steps: [typeof Search, string, string][] }) => (
+    <div className="card p-4">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-muted mb-2">{who}</div>
+      <ol className="flex items-start gap-1 sm:gap-2">
+        {steps.map(([I, t, d], i) => (
+          <li key={t} className="flex items-start gap-1 sm:gap-2 flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-center">
+              <div className="mx-auto grid place-items-center w-9 h-9 rounded-full bg-accent/15 text-accent"><I size={17} /></div>
+              <b className="block text-sm mt-1">{t}</b><span className="hidden sm:block text-[11px] text-muted leading-snug">{d}</span>
+            </div>
+            {i < steps.length - 1 && <ChevronRight size={16} className="text-muted mt-2.5 shrink-0" />}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+  return (
+    <section aria-label="How Plugsy works" className="grid lg:grid-cols-[3fr_2fr] gap-3">
+      <Row who="How Plugsy works · drivers" steps={[[Search, 'Find', 'See free chargers near you'], [CalendarCheck, 'Book', 'Pick a time slot'], [Zap, 'Charge', 'Plug in at the host’s'], [IndianRupee, 'Pay', 'Only for energy used']]} />
+      <Row who="For hosts" steps={[[Plug, 'List', 'Add your charger, price and hours'], [CalendarCheck, 'Get bookings', 'Drivers book slots'], [Wallet, 'Earn', 'Money for every kWh']]} />
+    </section>
+  )
+}
+
+function HomeChargers() {
+  const theme = useTheme()[0]
+  const real = useHomeChargers()
   const u = useUser()
+  const map = useRef<MapBaseHandle>(null)
   const [me, setMe] = useState<[number, number] | null>(null)
   const [type, setType] = useState<'all' | 'AC' | 'DC'>('all')
+  const [freeOnly, setFreeOnly] = useState(false)
   const [book, setBook] = useState<HomeCharger | null>(null)
+  const [selId, setSelId] = useState<string | null>(null)
   const requireLogin = useRequireLogin()
-  useEffect(() => { navigator.geolocation?.getCurrentPosition((p) => setMe([p.coords.longitude, p.coords.latitude]), () => {}, { maximumAge: 600000, timeout: 8000 }) }, [])
-  const rows = useMemo(() => (list ?? [])
-    .filter((c) => c.host_id !== u?.id && (type === 'all' || c.type === type))
-    .map((c) => ({ c, d: me ? haversineKm(me[1], me[0], c.lat, c.lon) : null }))
-    .sort((a, b) => (a.d ?? 0) - (b.d ?? 0) || a.c.area.localeCompare(b.c.area)), [list, u, type, me])
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition((p) => { const pos: [number, number] = [p.coords.longitude, p.coords.latitude]; setMe(pos); map.current?.fly(pos[0], pos[1], 12) }, () => {}, { maximumAge: 600000, timeout: 8000 })
+    map.current?.fly(77.21, 28.58, 10.5)
+  }, [])
+  const samples = useSamples(me)
+  const base = useMemo(() => [...(real ?? []).map((c) => ({ ...c, rating: 4.6, reviews: 0 }) as Listing), ...samples], [real, samples])
+  const live = useLiveStatus(base)
+  const origin = useMemo<[number, number]>(() => me ?? [77.21, 28.58], [me])
+  const rows = useMemo(() => live
+    .filter((c) => c.host_id !== u?.id && (type === 'all' || c.type === type) && (!freeOnly || c.status === 'free'))
+    .map((c) => ({ c, d: haversineKm(origin[1], origin[0], c.lat, c.lon) }))
+    .sort((a, b) => a.d - b.d), [live, u, type, freeOnly, origin])
+  const sel = live.find((c) => c.id === selId) ?? null
+  const alts = useMemo(() => (sel && sel.status !== 'free' ? live.filter((c) => c.status === 'free' && c.id !== sel.id)
+    .map((c) => ({ c, d: haversineKm(sel.lat, sel.lon, c.lat, c.lon) })).sort((a, b) => a.d - b.d).slice(0, 3) : []), [sel, live])
+  const counts = useMemo(() => Object.fromEntries((['free', 'busy', 'booked', 'offline'] as PlugStatus[]).map((s) => [s, live.filter((c) => c.status === s).length])), [live])
+  const choose = (c: Listing) => { setSelId(c.id); map.current?.fly(c.lon, c.lat, 14) }
+
   return (
-    <>
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2 items-center">
         {(['all', 'AC', 'DC'] as const).map((t) => <button key={t} onClick={() => setType(t)} className={`pill ${type === t ? 'pill-primary' : ''}`}>{t === 'all' ? 'All' : t === 'DC' ? 'DC fast' : 'AC'}</button>)}
+        <button onClick={() => setFreeOnly(!freeOnly)} aria-pressed={freeOnly} className={`pill ${freeOnly ? 'pill-primary' : ''}`}>Free now only</button>
+        <span className="chip text-warn border-warn/30 bg-warn/10">Pilot demo — sample listings</span>
         <span className="text-xs text-muted flex items-center gap-1 ml-auto"><span className="w-2 h-2 rounded-full bg-ok animate-pulse" />Status updates live</span>
       </div>
-      {!list ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-48" />)}</div> : !rows.length
-        ? <p className="text-sm text-muted">No home chargers listed here yet. <Link className="text-accent" to="/plugsy?tab=host">Be the first host</Link>.</p>
-        : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rows.map(({ c, d }) => (
-              <article key={c.id} className="card p-5 flex flex-col">
-                <div className="flex items-start justify-between gap-2"><Status s={c.status} />{c.verified ? <span className="chip text-ok border-ok/30"><BadgeCheck size={12} />Verified host</span> : <span className="chip text-muted">Verification pending</span>}</div>
-                <h3 className="mt-3 font-semibold">{c.title}</h3>
-                <p className="text-sm text-muted flex items-center gap-1"><MapPin size={13} />{c.area} (approx.){d != null ? ` · ${kmText(d)}` : ''}</p>
-                <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
-                  <span className="chip"><Zap size={11} />{c.type} {c.power_kw} kW</span><span className="chip"><Plug size={11} />{c.connector}</span><span className="chip">{c.hours}</span>
-                </div>
-                <div className="mt-auto pt-4 flex items-center justify-between">
-                  <span><b className="text-lg tnum">₹{c.price_kwh}</b><span className="text-xs text-muted"> / kWh</span></span>
-                  <button className="btn btn-primary !py-2" disabled={c.status === 'offline'} onClick={() => requireLogin(() => setBook(c))}>{c.status === 'offline' ? 'Offline' : 'Book a slot'}</button>
-                </div>
-              </article>
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-4">
+        <div className="map-card h-[460px] md:h-[600px]">
+          <MapBase ref={map} basemap={theme} deck={(_, { ScatterplotLayer }) => ({
+            layers: [new ScatterplotLayer<Listing>({
+              id: 'home', data: rows.map((r) => r.c), getPosition: (c) => [c.lon, c.lat], radiusUnits: 'pixels', getRadius: (c) => (c.id === selId ? 11 : 7), pickable: true,
+              stroked: true, lineWidthMinPixels: 2, getFillColor: (c) => STATUS[c.status][2], getLineColor: (c) => (c.id === selId ? [17, 24, 39] : [255, 255, 255]),
+              updateTriggers: { getFillColor: live, getRadius: selId, getLineColor: selId }, transitions: { getFillColor: 400 },
+              onClick: (i: PickingInfo) => { if (i.object) setSelId((i.object as Listing).id) },
+            })],
+            getTooltip: ({ object }: PickingInfo) => { const c = object as Listing | undefined; return c ? tooltipBox(`<b>${c.host_name}’s charger · ${c.area}</b><br/>${c.type} ${c.power_kw} kW · ₹${c.price_kwh}/kWh<br/>${STATUS[c.status][0]}${c.status === 'busy' && c.mins ? ` · free in ~${c.mins} min` : ''}`) : null },
+          })}>
+            {({ Marker }) => me && <Marker longitude={me[0]} latitude={me[1]}><div className="me-dot" aria-label="You are here" /></Marker>}
+          </MapBase>
+          <div className="absolute left-3 bottom-3 glass p-3 no-print text-[11px] space-y-1">
+            {(['free', 'busy', 'booked', 'offline'] as PlugStatus[]).map((s) => (
+              <div key={s} className="flex items-center gap-1.5 tnum"><span className="w-2.5 h-2.5 rounded-full ring-2 ring-white" style={{ background: rgb(s) }} />{STATUS[s][0]}{s === 'busy' ? ' (in use)' : ''} · {counts[s]}</div>
             ))}
           </div>
-        )}
+        </div>
+        <div className="space-y-3 min-w-0">
+          {sel && (
+            <article className="card p-4 border-accent/40">
+              <div className="flex items-start justify-between gap-2"><Status s={sel.status} mins={sel.mins} /><button className="icon-btn !w-7 !h-7" onClick={() => setSelId(null)} aria-label="Close"><X size={14} /></button></div>
+              <ChargerCard c={sel} d={haversineKm(origin[1], origin[0], sel.lat, sel.lon)} onBook={() => requireLogin(() => setBook(sel))} flat />
+              {alts.length > 0 && (
+                <div className="mt-3 rounded-xl bg-[#f97316]/10 border border-[#f97316]/30 p-3">
+                  <div className="text-sm font-semibold">{STATUS[sel.status][0]} — nearest free chargers:</div>
+                  <ul className="mt-1.5 space-y-1">{alts.map(({ c, d }) => (
+                    <li key={c.id}><button className="w-full text-left text-sm flex justify-between gap-2 hover:underline" onClick={() => choose(c)}><span className="truncate">{c.host_name} · {c.area} · {c.type} {c.power_kw} kW</span><span className="tnum text-muted shrink-0">{kmText(d)}</span></button></li>
+                  ))}</ul>
+                </div>
+              )}
+            </article>
+          )}
+          <div className="text-xs text-muted">{rows.length} home chargers · nearest to {me ? 'you' : 'central Delhi (allow location to see yours)'}</div>
+          <ul className="space-y-2 max-h-[520px] overflow-auto pr-1" data-lenis-prevent>
+            {rows.slice(0, 40).map(({ c, d }) => (
+              <li key={c.id}>
+                <button onClick={() => choose(c)} className={`w-full text-left card p-3 flex items-center gap-3 hover:bg-hover ${c.id === selId ? '!border-accent' : ''}`}>
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ background: rgb(c.status) }} aria-hidden />
+                  <span className="min-w-0 flex-1"><b className="block text-sm truncate">{c.host_name} · {c.area}</b>
+                    <span className="text-xs text-muted">{c.type} {c.power_kw} kW · ₹{c.price_kwh}/kWh · ★ {c.rating}</span></span>
+                  <span className="text-right shrink-0"><span className="block text-xs tnum">{kmText(d)}</span><span className="text-[11px] text-muted">{STATUS[c.status][0]}{c.status === 'busy' && c.mins ? ` ~${c.mins}m` : ''}</span></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
       <BookDialog c={book} onClose={() => setBook(null)} />
-    </>
+    </div>
+  )
+}
+
+function ChargerCard({ c, d, onBook, flat }: { c: Listing; d: number | null; onBook: () => void; flat?: boolean }) {
+  return (
+    <div className={flat ? 'mt-2' : 'card p-5'}>
+      <div className="flex gap-3">
+        <div className="w-16 h-16 rounded-xl bg-[linear-gradient(135deg,var(--bg-2),var(--active))] border border-line grid place-items-center text-muted shrink-0" aria-label="Photo placeholder"><Camera size={18} /></div>
+        <div className="min-w-0">
+          <h3 className="font-semibold leading-tight">{c.title}</h3>
+          <p className="text-sm text-muted flex items-center gap-1"><MapPin size={13} />{c.area} (approx.){d != null ? ` · ${kmText(d)}` : ''}</p>
+          <p className="text-xs mt-0.5">Host {c.host_name} · <span className="text-warn">★ {c.rating}</span> <span className="text-muted">({c.reviews})</span> {c.verified ? <span className="text-ok">· Verified</span> : <span className="text-muted">· Verification pending</span>}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+        <span className="chip"><Zap size={11} />{c.type} {c.power_kw} kW</span><span className="chip"><Plug size={11} />{c.connector}</span><span className="chip">{c.hours}</span>
+        {c.sample && <span className="chip text-warn border-warn/30">Sample listing</span>}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <span><b className="text-lg tnum">₹{c.price_kwh}</b><span className="text-xs text-muted"> / kWh</span></span>
+        <button className="btn btn-primary !py-2" disabled={c.status === 'offline'} onClick={onBook}>{c.status === 'offline' ? 'Offline' : c.status === 'free' ? 'Book now' : 'Book a later slot'}</button>
+      </div>
+    </div>
   )
 }
 
