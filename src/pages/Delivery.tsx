@@ -111,7 +111,7 @@ export default function Delivery() {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_380px] gap-4">
-          <div className="card !p-0 overflow-hidden">
+          <div className="map-card">
             <div className="relative h-[480px] md:h-[580px]">
               <MapBase ref={map} basemap={theme} deck={(_, k) => ({ layers: layers(k), getTooltip: tip, onClick: click, getCursor: ({ isHovering }) => (isHovering ? 'pointer' : 'crosshair') })} />
               <div className="absolute left-3 top-3 glass px-3 py-2 text-xs flex items-center gap-2"><MousePointerClick size={14} className="text-accent" />Click the map to propose a hub</div>

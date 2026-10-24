@@ -160,7 +160,7 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
 
       {region.hasCells ? (
         <div className="grid lg:grid-cols-[1fr_360px] gap-4">
-          <div className="card overflow-hidden relative h-[480px] print:h-auto">
+          <div className="map-card h-[480px] print:h-auto">
             <div className="absolute inset-0 print:hidden">
               <MapBase ref={mapRef} basemap={theme} deck={(_, { ScatterplotLayer }) => ({
                 layers: sites ? [

@@ -18,6 +18,7 @@
   --hover: rgba(229, 231, 235, 0.05);
   --active: rgba(229, 231, 235, 0.09);
   --line: rgba(229, 231, 235, 0.08);
+  --line-map: rgba(229, 231, 235, 0.16);
   --text: #e5e7eb;
   --muted: #9ca3af;
   --accent: #f87171; /* text / strokes / key numbers */
@@ -39,6 +40,7 @@
   --hover: rgba(17, 24, 39, 0.04);
   --active: rgba(17, 24, 39, 0.07);
   --line: rgba(17, 24, 39, 0.1);
+  --line-map: rgba(17, 24, 39, 0.16);
   --text: #111827;
   --muted: #4b5563;
   --accent: #dc2626; /* coral is too light for text on white; darker shade keeps 4.5:1 */
@@ -105,6 +107,24 @@ p a, li a, dd a { text-decoration: underline; text-underline-offset: 3px; text-d
     border-radius: 18px;
     box-shadow: var(--shadow);
   }
+  /* every map sits in one of these: clearly separate from the page */
+  .map-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid var(--line-map);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px -12px rgba(0, 0, 0, 0.25);
+    background: var(--bg-2);
+    isolation: isolate;
+  }
+  .map-card:fullscreen { border-radius: 0; border: 0; }
+  .map-btn {
+    width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px;
+    background: var(--panel); color: var(--text); border: 1px solid var(--line-map);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); cursor: pointer;
+  }
+  .map-btn:hover { background: var(--hover); }
+  .map-btn[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
   .glass {
     background: var(--glass);
     border: 1px solid var(--line);
@@ -262,7 +282,7 @@ html.lenis, html.lenis body { height: auto; }
 }
 
 /* MapLibre controls in the product palette */
-.maplibregl-ctrl-group { background: var(--panel) !important; border: 1px solid var(--line); border-radius: 12px !important; box-shadow: none !important; overflow: hidden; }
+.maplibregl-ctrl-group { background: var(--panel) !important; border: 1px solid var(--line-map); border-radius: 10px !important; box-shadow: 0 1px 4px rgba(0,0,0,.15) !important; overflow: hidden; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--line) !important; }
 :root:not(.light) .maplibregl-ctrl-icon { filter: invert(1); }
 .maplibregl-ctrl-attrib { background: var(--glass) !important; color: var(--muted); }

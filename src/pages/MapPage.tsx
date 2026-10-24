@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useTheme } from '../lib/theme'
 import { haversineKm } from '../lib/model'
 import {
-  getStation, kmText, loadTile, matches, nearest, NO_FILTER, stationIndex, tileIndex, tilesIn,
+  getStation, kmText, liteStation, loadTile, matches, nearest, NO_FILTER, stationIndex, tileIndex, tilesIn,
   type Filters, type IndexRow, type Station, type TileIndex,
 } from '../lib/stations'
 import type { ChargerMapHandle } from '../components/ChargerMap'
@@ -14,6 +14,7 @@ import StationPanel, { Sheet } from '../components/StationPanel'
 
 const ChargerMap = lazy(() => import('../components/ChargerMap'))
 const PIN_ZOOM = 9
+const fmtN = (n: number) => n.toLocaleString('en-IN')
 
 type Hit = { kind: 'place'; label: string; sub: string; lon: number; lat: number; zoom: number } | { kind: 'station'; row: IndexRow }
 
@@ -32,7 +33,8 @@ async function geocode(q: string, near?: [number, number] | null): Promise<Hit[]
   })
 }
 
-export default function MapPage() {
+/** The public charger map. `embedded` drops the page margins so Plugsy can show it inside a tab. */
+export default function MapPage({ embedded = false }: { embedded?: boolean }) {
   const [theme] = useTheme()
   const [params] = useSearchParams()
   const map = useRef<ChargerMapHandle>(null)
@@ -50,14 +52,32 @@ export default function MapPage() {
   const [focus, setFocus] = useState(false)
   const searchBox = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { tileIndex().then(setIdx, () => toast.error('Could not load charger data. Please refresh.')) }, [])
+  const [rows, setRows] = useState<IndexRow[]>([])
+  const [center, setCenter] = useState<[number, number] | null>(null)
+  useEffect(() => {
+    tileIndex().then(setIdx, () => toast.error('Could not load charger data. Please refresh.'))
+    stationIndex().then(setRows, () => {})
+  }, [])
 
-  const all = useMemo(() => Object.values(tiles).flat(), [tiles])
+  // every station in India from the light index; tile data (plugs, power, price …) replaces it as tiles load
+  const all = useMemo(() => {
+    const full = new Map(Object.values(tiles).flat().map((s) => [s.id, s]))
+    return rows.length ? rows.map((r) => full.get(r[0]) ?? liteStation(r)) : [...full.values()]
+  }, [tiles, rows])
+  // honest coverage note for the state in the middle of the view (nearest mapped station within ~80 km decides the state)
+  const cover = useMemo(() => {
+    if (!center || !idx?.states || zoom < 6) return null
+    let best: IndexRow | null = null, bd = 80
+    for (const r of rows) { const d = haversineKm(center[1], center[0], r[4], r[3]); if (d < bd) { bd = d; best = r } }
+    const state = best?.[2].split(', ').pop()
+    const c = state ? idx.states[state] : undefined
+    return c && state ? { state, ...c } : null
+  }, [center, idx, rows, zoom])
   const shown = useMemo(() => all.filter((s) => matches(s, f)), [all, f])
   const plugTypes = useMemo(() => [...new Set(all.flatMap((s) => s.plugs.map((p) => p.type)))].sort(), [all])
 
   const onView = useCallback((b: [number, number, number, number], z: number) => {
-    setZoom(z)
+    setZoom(z); setCenter([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2])
     if (!idx || z < PIN_ZOOM - 1) return
     for (const k of tilesIn(b, idx)) loadTile(k).then((list) => setTiles((t) => (t[k] ? t : { ...t, [k]: list })), () => {})
   }, [idx])
@@ -119,10 +139,11 @@ export default function MapPage() {
   const active = f.kind !== 'all' || f.minKw > 0 || !!f.plug
 
   return (
-    <div className="relative flex-1 min-h-0 mx-2 md:mx-2.5 mb-2 rounded-[20px] overflow-hidden border border-line">
+    <div className={`map-card flex-1 ${embedded ? 'h-[620px] max-h-[75dvh]' : 'min-h-0 mx-2 md:mx-2.5 mb-2'}`}>
       <Suspense fallback={<div className="absolute inset-0 skeleton !rounded-none" aria-busy="true" />}>
         <div className="absolute inset-0">
-          <ChargerMap ref={ready} theme={theme} stations={shown} selected={sel?.id} me={me} onPick={(s) => { setSel(s); setNear(null) }} onView={onView} />
+          <ChargerMap ref={ready} theme={theme} stations={shown} selected={sel?.id} me={me} onPick={(s) => { setNear(null); if (s.src.length) setSel(s); else getStation(s.id, s.lon, s.lat).then((full) => setSel(full ?? s)) }} onView={onView}
+            layers={[{ label: 'DC fast chargers only', on: f.kind === 'dc', set: (v) => setF({ ...f, kind: v ? 'dc' : 'all' }), color: '#16a34a' }]} />
         </div>
       </Suspense>
 
@@ -173,11 +194,17 @@ export default function MapPage() {
 
       {/* status + near me */}
       <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-4 md:bottom-5 flex items-center gap-2">
-        {zoom < PIN_ZOOM
-          ? <span className="glass !rounded-full px-3 py-2 text-xs text-muted whitespace-nowrap">Zoom into a city to see chargers</span>
-          : <span className="glass !rounded-full px-3 py-2 text-xs whitespace-nowrap tnum"><span className="inline-block w-2 h-2 rounded-full bg-[#22c55e] mr-1.5" />{shown.length} stations loaded</span>}
+        <span className="glass !rounded-full px-3 py-2 text-xs whitespace-nowrap tnum" title="Real public stations from OpenStreetMap and Open Charge Map, merged and de-duplicated">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#22c55e] mr-1.5" />{fmtN(shown.length)} real stations{zoom < PIN_ZOOM ? ' · tap a circle to zoom in' : ''}</span>
         <button className="btn btn-primary !py-2 shadow-lg" onClick={nearMe}>{locating ? <Loader2 size={15} className="animate-spin" /> : <LocateFixed size={15} />}Near me</button>
       </div>
+
+      {cover && cover.mapped < cover.official && (
+        <div className="absolute z-10 left-3 right-3 md:left-auto md:right-14 top-[68px] md:top-3 md:max-w-[340px] glass !rounded-xl px-3 py-2 text-xs leading-snug">
+          <b>Govt reports {fmtN(cover.official)} public stations in {cover.state}; {fmtN(cover.mapped)} mapped so far.</b>{' '}
+          <span className="text-muted">We only show stations with a real, open location. The rest are not on open maps yet.</span>
+        </div>
+      )}
 
       <AnimatePresence>
         {sel && <StationPanel key={sel.id} s={sel} distance={dist} onClose={() => setSel(null)} />}

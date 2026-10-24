@@ -117,7 +117,7 @@ export default function PlanningLab() {
         </select>
 
         <div className="grid lg:grid-cols-[1fr_380px] gap-4">
-          <div className="card !p-0 overflow-hidden">
+          <div className="map-card">
             <div className="relative h-[480px] md:h-[600px]">
               <MapBase ref={map} basemap={theme} deck={(_, k) => ({ layers: layers(k), getTooltip: tip, onClick: click, getCursor: ({ isHovering }) => (isHovering ? 'pointer' : mode === 'add' ? 'crosshair' : 'grab') })} />
               <div className="absolute left-3 top-3 glass p-2 flex gap-1 no-print">

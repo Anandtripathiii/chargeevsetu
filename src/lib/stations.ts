@@ -8,7 +8,10 @@ export interface Station {
   points: number | null; swap?: boolean; price: string | null; hours: string | null; address: string | null; access: string | null
   vehicles?: string[]; src: string[]; area: string
 }
-export interface TileIndex { z: number; tiles: string[]; count: number; built: string }
+export interface TileIndex {
+  z: number; tiles: string[]; count: number; built: string; sources: { osm: number; ocm: number }
+  states: Record<string, { mapped: number; official: number; osm: number; ocm: number }>
+}
 /** [id, name, area, lon, lat, dc] */
 export type IndexRow = [string, string, string, number, number, 0 | 1]
 
@@ -28,6 +31,12 @@ export function tilesIn(b: [number, number, number, number], idx: TileIndex): st
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (have.has(`${x}/${y}`)) out.push(`${x}/${y}`)
   return out
 }
+
+/** Search-index row as a bare Station (no plug details), so the whole country can be clustered before tiles load. */
+export const liteStation = (r: IndexRow): Station => ({
+  id: r[0], name: r[1], area: r[2], lon: r[3], lat: r[4], dc: !!r[5], operator: null, kw: null, plugs: [], points: null,
+  price: null, hours: null, address: null, access: null, src: [],
+})
 
 export async function getStation(id: string, lon: number, lat: number): Promise<Station | undefined> {
   return (await loadTile(tileOf(lon, lat).join('/')).catch(() => [])).find((s) => s.id === id)

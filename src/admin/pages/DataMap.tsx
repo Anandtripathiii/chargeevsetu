@@ -295,8 +295,8 @@ export default function MapPage() {
   const usedCities = [...new Set(ROUTES.flatMap(([a, b]) => [a, b]))]
 
   return (
-    <div className="relative flex-1 min-h-[480px] mx-4 md:mx-6 mb-4 rounded-[20px] overflow-hidden border border-line">
-      <MapBase ref={mapRef} basemap={basemap} nav="top-right" deck={(labelId, k) => ({ layers: deckLayers(labelId, k), getTooltip })}>
+    <div className="map-card flex-1 min-h-[480px] mx-4 md:mx-6 mb-4">
+      <MapBase ref={mapRef} basemap={basemap} deck={(labelId, k) => ({ layers: deckLayers(labelId, k), getTooltip })}>
         {({ Source, Layer, Marker }) => (
           <>
             {layers.chargers && !layers.heat && (

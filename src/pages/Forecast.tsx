@@ -98,7 +98,7 @@ export default function Forecast() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4">
-          <div className="card !p-0 overflow-hidden">
+          <div className="map-card">
             <div className="relative h-[420px]">
               <MapBase basemap={theme} onReady={() => setMapOn(true)} deck={(_, k) => ({ layers: layers(k), getTooltip: ({ object }: PickingInfo) => {
                 const r = object && byName.get((object as Feature).properties?.state)

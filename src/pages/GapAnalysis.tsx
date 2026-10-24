@@ -110,7 +110,7 @@ export default function GapAnalysis() {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_380px] gap-4">
-          <div className="card overflow-hidden !p-0">
+          <div className="map-card">
             <div className="relative h-[460px] md:h-[560px]">
               <MapBase ref={map} basemap={theme} onReady={() => setMapOn(true)} deck={(_, k) => ({ layers: layers(k), getTooltip: tip })} />
               <div className="absolute left-3 bottom-3 glass p-3 w-60 no-print">
