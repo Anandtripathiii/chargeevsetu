@@ -1,3 +1,4 @@
+import './maplibreWorker' // must run before the first map is created
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
 import MapGL, { GeolocateControl, Layer, Marker, NavigationControl, Source, type MapLayerMouseEvent, type MapRef } from 'react-map-gl/maplibre'
 import type { GeoJSONSource } from 'maplibre-gl'

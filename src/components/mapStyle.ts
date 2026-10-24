@@ -34,6 +34,7 @@ export function googleify(m: MLMap, theme: 'dark' | 'light') {
       else if (id === 'landcover_wood') paint(m, id, 'fill-color', p.wood)
       else if (id === 'landuse_residential') paint(m, id, 'fill-color', p.residential)
       else if (id === 'building') { paint(m, id, 'fill-color', p.building); paint(m, id, 'fill-outline-color', p.casing) }
+      else if (id !== 'road_area_pattern') paint(m, id, 'fill-color', p.residential) // hospital, school, sand, airport …: no bright patches in dark mode
     } else if (l.type === 'line') {
       if (id.startsWith('waterway')) paint(m, id, 'line-color', p.water)
       else if (id.startsWith('boundary')) paint(m, id, 'line-color', p.boundary)

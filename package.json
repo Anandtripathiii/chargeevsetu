@@ -12,7 +12,8 @@
     "pipeline": ".venv/Scripts/python pipeline/run_all.py",
     "check-data": "node scripts/check-data.mjs",
     "backup": "node scripts/backup-db.mjs",
-    "security-test": "node scripts/security-tests.mjs"
+    "security-test": "node scripts/security-tests.mjs",
+    "serve:prod": "node scripts/serve-prod.mjs"
   },
   "dependencies": {
     "@deck.gl/aggregation-layers": "^9.4.0",

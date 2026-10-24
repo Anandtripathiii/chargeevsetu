@@ -1,3 +1,4 @@
+import './maplibreWorker' // must run before the first map is created
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react'
 import MapGL, { GeolocateControl, Layer, Marker, NavigationControl, Source, useControl, type MapRef } from 'react-map-gl/maplibre'
 import { MapboxOverlay, type MapboxOverlayProps } from '@deck.gl/mapbox'
@@ -10,7 +11,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 export const BASEMAPS = { dark: STYLE_URL, light: STYLE_URL } // one style, recoloured per theme by googleify
 
 function DeckOverlay(props: MapboxOverlayProps) {
-  const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props, interleaved: true }))
+  const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props, interleaved: false }))
   overlay.setProps(props)
   return null
 }
@@ -30,7 +31,7 @@ export interface MapBaseProps {
   layers?: LayerToggle[]
 }
 
-/** MapLibre basemap + deck.gl overlay (interleaved so deck layers sit inside the map's WebGL context). */
+/** MapLibre basemap + deck.gl overlay on its own canvas (interleaved mode reads maplibre-gl v6 internals that changed). */
 const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
   function MapBase({ basemap, deck, children, initialBounds = INDIA_BOUNDS, className, nav = 'bottom-right', layers }, ref) {
     const map = useRef<MapRef>(null)
