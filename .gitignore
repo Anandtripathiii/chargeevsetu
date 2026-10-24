@@ -26,6 +26,9 @@ dist-ssr
 .venv
 __pycache__
 .env
+.env.*
+!.env.example
+backups/
 data/raw/**/*.json
 !data/raw/**/README.md
 
