@@ -3,7 +3,7 @@ import MapGL, { GeolocateControl, Layer, Marker, NavigationControl, Source, useC
 import { MapboxOverlay, type MapboxOverlayProps } from '@deck.gl/mapbox'
 import { GeoJsonLayer, PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { HeatmapLayer } from '@deck.gl/aggregation-layers'
-import { INDIA_BOUNDS, MapChrome, type LayerToggle, type MapBaseHandle } from './mapUtil'
+import { INDIA_BOUNDS, MapChrome, MapError, trackMapErrors, type LayerToggle, type MapBaseHandle } from './mapUtil'
 import { googleify, STYLE_URL } from './mapStyle'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -37,6 +37,9 @@ const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
     // first label layer of the basemap: polygon layers go beneath it so place names stay readable
     const [labelId, setLabelId] = useState<string>()
     const styled = useRef(false) // recolour once per style load (setPaintProperty itself fires styledata)
+    const [failed, setFailed] = useState(false)
+    const [onErr] = useState(() => trackMapErrors(() => setFailed(true)))
+    const retry = () => { setFailed(false); styled.current = false; map.current?.getMap().setStyle(STYLE_URL) }
     // Camera moves requested before the map exists/has its style (react-map-gl creates the map
     // asynchronously) are queued; only the latest one runs.
     const pending = useRef<(() => void) | null>(null)
@@ -73,6 +76,7 @@ const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
           onStyleData={onStyle}
           onLoad={onStyle}
           onIdle={flush}
+          onError={() => onErr(!!map.current?.getMap().isStyleLoaded())}
         >
           <NavigationControl position={nav} showCompass={false} />
           <GeolocateControl position={nav} showUserLocation />
@@ -80,6 +84,7 @@ const MapBase = forwardRef<MapBaseHandle, MapBaseProps>(
           {children?.(kit)}
         </MapGL>
         <MapChrome layers={layers} />
+        {failed && <MapError onRetry={retry} />}
       </div>
     )
   },

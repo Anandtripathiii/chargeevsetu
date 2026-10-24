@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter, NavLink, Outlet, RouterProvider, ScrollRestoration } from 'react-router-dom'
 import { Download, Moon, Sun } from 'lucide-react'
 import { PageSkeleton } from '../components/ui'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { useTheme } from '../lib/theme'
 import { useExporter } from '../lib/exporter'
 
@@ -37,7 +38,7 @@ function Shell() {
           <button className="icon-btn" onClick={toggle} aria-label="Toggle theme">{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
         </div>
       </header>
-      <main className="pt-6 pb-16 flex flex-col min-h-[calc(100dvh-56px)]"><Suspense fallback={<PageSkeleton />}><Outlet /></Suspense></main>
+      <main className="pt-6 pb-16 flex flex-col min-h-[calc(100dvh-56px)]"><ErrorBoundary label="This admin page"><Suspense fallback={<PageSkeleton />}><Outlet /></Suspense></ErrorBoundary></main>
       <ScrollRestoration />
     </>
   )

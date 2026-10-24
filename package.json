@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/check-data.mjs && node scripts/selfcheck.mjs && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "selfcheck": "node scripts/selfcheck.mjs",
-    "pipeline": ".venv/Scripts/python pipeline/run_all.py"
+    "pipeline": ".venv/Scripts/python pipeline/run_all.py",
+    "check-data": "node scripts/check-data.mjs",
+    "backup": "node scripts/backup-db.mjs",
+    "security-test": "node scripts/security-tests.mjs"
   },
   "dependencies": {
     "@deck.gl/aggregation-layers": "^9.4.0",

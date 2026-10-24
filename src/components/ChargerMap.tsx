@@ -1,8 +1,8 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
 import MapGL, { GeolocateControl, Layer, Marker, NavigationControl, Source, type MapLayerMouseEvent, type MapRef } from 'react-map-gl/maplibre'
 import type { GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { INDIA_BOUNDS, MapChrome, type LayerToggle } from './mapUtil'
+import { INDIA_BOUNDS, MapChrome, MapError, trackMapErrors, type LayerToggle } from './mapUtil'
 import { googleify, STYLE_URL } from './mapStyle'
 import type { Station } from '../lib/stations'
 
@@ -17,6 +17,8 @@ interface Props {
 
 const ChargerMap = forwardRef<ChargerMapHandle, Props>(function ChargerMap({ theme, stations, selected, me, onPick, onView, layers, children }, ref) {
   const map = useRef<MapRef>(null)
+  const [failed, setFailed] = useState(false)
+  const [onErr] = useState(() => trackMapErrors(() => setFailed(true)))
   const byId = useMemo(() => new Map(stations.map((s) => [s.id, s])), [stations])
   const geo = useMemo(() => ({
     type: 'FeatureCollection' as const,
@@ -54,6 +56,7 @@ const ChargerMap = forwardRef<ChargerMapHandle, Props>(function ChargerMap({ the
     <MapGL ref={map} initialViewState={{ bounds: INDIA_BOUNDS, fitBoundsOptions: { padding: 20 } }} mapStyle={STYLE_URL}
       minZoom={3} maxZoom={18} dragRotate={false} pitchWithRotate={false} attributionControl={{ compact: true }} style={{ width: '100%', height: '100%' }}
       interactiveLayerIds={['clusters', 'pins']} onClick={click} onLoad={onLoad} onMoveEnd={report}
+      onError={() => onErr(!!map.current?.getMap().isStyleLoaded())}
       cursor="auto" onMouseEnter={(e) => { e.target.getCanvas().style.cursor = 'pointer' }} onMouseLeave={(e) => { e.target.getCanvas().style.cursor = '' }}>
       <NavigationControl position="bottom-right" showCompass={false} />
       <GeolocateControl position="bottom-right" />
@@ -78,6 +81,7 @@ const ChargerMap = forwardRef<ChargerMapHandle, Props>(function ChargerMap({ the
       {me && <Marker longitude={me[0]} latitude={me[1]}><div className="me-dot" aria-label="You are here" /></Marker>}
       {children}
       <MapChrome layers={layers} />
+      {failed && <MapError onRetry={() => { setFailed(false); loaded.current = false; map.current?.getMap().setStyle(STYLE_URL); map.current?.getMap().once('style.load', onLoad) }} />}
     </MapGL>
   )
 })

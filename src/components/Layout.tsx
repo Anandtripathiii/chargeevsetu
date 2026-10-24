@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { useTheme } from '../lib/theme'
-import { DEMO } from '../lib/backend'
+import { DEMO, useServiceDown } from '../lib/backend'
 import { AccountMenu, LoginDialog } from './Account'
 
 export const NAV: [string, string, LucideIcon][] = [
@@ -195,6 +195,9 @@ function Footer() {
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 content-start">
           {NAV.slice(1).map(([to, l]) => <Link key={to} to={to} className="hover:text-text">{l}</Link>)}
+          <Link to="/privacy" className="hover:text-text">Privacy</Link>
+          <Link to="/terms" className="hover:text-text">Terms</Link>
+          <Link to="/status" className="hover:text-text">Status</Link>
         </div>
       </div>
     </footer>
@@ -222,6 +225,7 @@ export default function Layout() {
       <TopBar />
       <BottomBar />
       <div className={`app-shell pt-[72px] md:pt-[80px] ${isMap ? 'h-dvh pb-[80px] md:pb-0' : 'min-h-dvh pb-[88px] md:pb-0'} flex flex-col`}>
+        <ServiceBanner />
         <AnimatePresence mode="wait" initial={false}>
           <motion.main key={pathname} className="flex-1 flex flex-col min-h-0"
             initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none', transform: 'none' } }}
@@ -235,5 +239,16 @@ export default function Layout() {
       <Toaster theme={theme} position="top-center" richColors closeButton />
       <ScrollRestoration />
     </MotionConfig>
+  )
+}
+
+/** Shown while Supabase is unreachable: account features pause, static maps and tools keep working. */
+function ServiceBanner() {
+  const down = useServiceDown()
+  if (!down) return null
+  return (
+    <div role="status" className="mx-2 md:mx-2.5 mb-2 rounded-xl border border-warn/40 bg-warn/10 px-4 py-2 text-sm">
+      <b>Service temporarily unavailable.</b> Login, reviews and Plugsy bookings will be back shortly (we retry automatically). Maps, gap analysis, planning and forecasts still work. <Link to="/status" className="text-accent underline">Status</Link>
+    </div>
   )
 }

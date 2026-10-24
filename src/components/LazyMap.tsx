@@ -1,6 +1,7 @@
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { MapBaseProps } from './MapBase'
 import type { MapBaseHandle } from './mapUtil'
+import ErrorBoundary from './ErrorBoundary'
 
 const load = () => import('./MapBase')
 const MapBase = lazy(load)
@@ -56,7 +57,7 @@ const LazyMap = forwardRef<MapBaseHandle, MapBaseProps & { onReady?: () => void 
   }
   return (
     <div ref={box} className={props.className ?? 'absolute inset-0'}>
-      {ready ? <Suspense fallback={<Placeholder />}><MapBase ref={attach} {...props} className="absolute inset-0" /></Suspense> : <Placeholder onLoad={start} />}
+      {ready ? <ErrorBoundary label="The map" compact><Suspense fallback={<Placeholder />}><MapBase ref={attach} {...props} className="absolute inset-0" /></Suspense></ErrorBoundary> : <Placeholder onLoad={start} />}
     </div>
   )
 })

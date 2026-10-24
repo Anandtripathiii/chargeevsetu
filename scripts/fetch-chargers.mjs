@@ -1,9 +1,12 @@
 // Downloads every open, legally reusable public charger list for all of India into data/raw/:
 //   OpenStreetMap (Overpass, ODbL)  -> data/raw/osm/chargers_full.json   (whole country; falls back to 2x2° tiles)
-//   Open Charge Map (CC BY 4.0)     -> data/raw/ocm/ocm_in.json          (needs OCM_API_KEY in .env; paged by 4° boxes)
+//   Open Charge Map (CC BY 4.0)     -> data/raw/ocm/ocm_in.json          (API with OCM_API_KEY, paged by 4° boxes;
+//                                      without a key, OCM's own open export github.com/openchargemap/ocm-export data/IN)
 // Private operator apps (Tata Power, Statiq, ChargeZone, Jio-bp …) are not scraped: no open licence.
 // Usage: node scripts/fetch-chargers.mjs   then   node scripts/build-map-data.mjs
 import fs from 'node:fs'
+import os from 'node:os'
+import { execFileSync } from 'node:child_process'
 
 const UA = { 'User-Agent': 'ChargeEVSetu/1.0 (open data research)' }
 const save = (f, d) => { fs.mkdirSync(f.replace(/[^/]+$/, ''), { recursive: true }); fs.writeFileSync(f, JSON.stringify(d)) }
@@ -53,4 +56,13 @@ save('data/raw/osm/chargers_full.json', { elements: els })
 console.log(`OSM: ${els.length} charging stations`)
 const key = ocmKey()
 if (key) { const p = await ocm(key); save('data/raw/ocm/ocm_in.json', p); console.log(`OCM: ${p.length} POIs`) }
-else console.log('OCM: OCM_API_KEY is empty in .env -> skipped (get a free key at openchargemap.org/site/develop/api)')
+else {
+  const dir = fs.mkdtempSync(`${os.tmpdir()}/ocm-`)
+  execFileSync('git', ['clone', '-q', '--filter=blob:none', '--sparse', '--depth', '1', 'https://github.com/openchargemap/ocm-export', dir])
+  execFileSync('git', ['-C', dir, 'sparse-checkout', 'set', 'data/IN'])
+  const all = fs.readdirSync(`${dir}/data/IN`).map((f) => JSON.parse(fs.readFileSync(`${dir}/data/IN/${f}`, 'utf8')))
+  // 100 not operational, 150 planned, 200/210 removed
+  const live = all.filter((p) => ![100, 150, 200, 210].includes(p.StatusTypeID))
+  save('data/raw/ocm/ocm_in.json', live)
+  console.log(`OCM export (no API key): ${live.length} of ${all.length} POIs operational`)
+}

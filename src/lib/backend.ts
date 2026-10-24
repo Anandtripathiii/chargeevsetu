@@ -19,13 +19,18 @@ async function retryFetch(input: RequestInfo | URL, init?: RequestInit): Promise
   for (let i = 0; ; i++) {
     try {
       const r = await fetch(input, init)
-      if (!safe || i >= 2 || ![502, 503, 504].includes(r.status)) return r
-    } catch (e) { if (i >= 2) throw e } // network error: the request never arrived, retrying is safe
+      if (!safe || i >= 2 || ![502, 503, 504].includes(r.status)) { setServiceDown(r.status >= 502 && r.status <= 504); return r }
+    } catch (e) { if (i >= 2) { setServiceDown(true); throw e } } // network error: the request never arrived, retrying is safe
     await new Promise((ok) => setTimeout(ok, 400 * 2 ** i))
   }
 }
 const sb = () => (client ??= import('@supabase/supabase-js').then(({ createClient }) => createClient(URL_!, KEY!, { global: { fetch: retryFetch } })))
 export const UNAVAILABLE = 'Service temporarily unavailable. Please try again shortly.'
+// set when a Supabase call fails at the network/server level; pages show a banner (static map data keeps working)
+let serviceDown = false
+const downSubs = new Set<() => void>()
+export const setServiceDown = (v: boolean) => { if (v !== serviceDown) { serviceDown = v; downSubs.forEach((f) => f()) } }
+export const useServiceDown = () => useSyncExternalStore((f) => (downSubs.add(f), () => downSubs.delete(f)), () => serviceDown)
 
 // ---------------- types ----------------
 export interface User { id: string; email: string; name: string }
@@ -257,7 +262,7 @@ export function useHomeChargers(): HomeCharger[] | null {
     let live = true, off = () => {}
     sb().then(async (c) => {
       // public columns only, max 100 rows per request
-      const load = async () => { const { data } = await c.from('home_chargers').select('id, host_id, host_name, title, area, lon, lat, type, power_kw, connector, price_kwh, hours, status, verified, photos, created_at').order('created_at', { ascending: false }).range(0, 99); if (live) setList((data ?? []) as HomeCharger[]) }
+      const load = async () => { const { data, error } = await c.from('home_chargers').select('id, host_id, host_name, title, area, lon, lat, type, power_kw, connector, price_kwh, hours, status, verified, photos, created_at').order('created_at', { ascending: false }).range(0, 99); if (error) setServiceDown(true); if (live) setList((data ?? []) as HomeCharger[]) }
       await load()
       // unique name per hook: removeChannel must not close another listener's channel
       const ch = c.channel(`home_chargers-${uid()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'home_chargers' }, load).subscribe()

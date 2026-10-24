@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Layers, Maximize2, Minimize2 } from 'lucide-react'
+import { Layers, Maximize2, Minimize2, RotateCcw, WifiOff } from 'lucide-react'
 
 // Light map helpers: no MapLibre / deck.gl imports, so pages can use them before the map code loads.
 
@@ -66,4 +66,28 @@ export function MapChrome({ layers }: { layers?: LayerToggle[] }) {
       <button className="map-btn" onClick={fullscreen} aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>{full ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
     </div>
   )
+}
+
+/** Shown over a map whose tiles or style failed to load: never a blank map. */
+export function MapError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="absolute inset-0 z-30 grid place-items-center bg-bg-2/85 backdrop-blur-sm p-4">
+      <div className="card p-5 text-center max-w-xs">
+        <WifiOff className="mx-auto text-warn" size={26} />
+        <h2 className="font-semibold mt-2">The map could not load</h2>
+        <p className="text-sm text-muted mt-1">The map service may be busy or your connection dropped. The numbers on this page still work.</p>
+        <button className="btn btn-primary mt-3 mx-auto" onClick={onRetry}><RotateCcw size={15} />Retry</button>
+      </div>
+    </div>
+  )
+}
+
+/** Counts map load errors; a style failure or a burst of tile failures marks the map as failed. */
+export function trackMapErrors(onFail: () => void) {
+  let recent: number[] = []
+  return (styleLoaded: boolean) => {
+    const now = Date.now()
+    recent = recent.filter((t) => now - t < 10000).concat(now)
+    if (!styleLoaded || recent.length >= 8) { recent = []; onFail() }
+  }
 }

@@ -11,6 +11,7 @@ import {
 } from '../lib/stations'
 import type { ChargerMapHandle } from '../components/ChargerMap'
 import StationPanel, { Sheet } from '../components/StationPanel'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const ChargerMap = lazy(() => import('../components/ChargerMap'))
 const PIN_ZOOM = 9
@@ -24,7 +25,7 @@ async function geocode(q: string, near?: [number, number] | null): Promise<Hit[]
   u.searchParams.set('q', q); u.searchParams.set('limit', '5'); u.searchParams.set('bbox', '68,6,98,37')
   if (near) { u.searchParams.set('lon', String(near[0])); u.searchParams.set('lat', String(near[1])) }
   const r = await fetch(u)
-  if (!r.ok) return []
+  if (!r.ok) throw new Error(`geocoder HTTP ${r.status}`)
   const j = await r.json() as { features: { geometry: { coordinates: [number, number] }; properties: Record<string, string> }[] }
   return j.features.filter((f) => !f.properties.countrycode || f.properties.countrycode === 'IN').map((f) => {
     const p = f.properties
@@ -50,6 +51,8 @@ export default function MapPage({ embedded = false }: { embedded?: boolean }) {
   const [q, setQ] = useState(params.get('q') ?? '')
   const [hits, setHits] = useState<Hit[]>([])
   const [focus, setFocus] = useState(false)
+  const [geoErr, setGeoErr] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
   const searchBox = useRef<HTMLInputElement>(null)
 
   const [rows, setRows] = useState<IndexRow[]>([])
@@ -100,7 +103,7 @@ export default function MapPage({ embedded = false }: { embedded?: boolean }) {
     started.current = true
     const lat = Number(params.get('lat')), lon = Number(params.get('lon'))
     if (lat && lon) { h.fly(lon, lat, Number(params.get('z')) || 11); locate(false) }
-    else if (params.get('q')) geocode(params.get('q')!).then((r) => { const p = r[0]; if (p?.kind === 'place') h.fly(p.lon, p.lat, p.zoom); else locate() })
+    else if (params.get('q')) geocode(params.get('q')!).then((r) => { const p = r[0]; if (p?.kind === 'place') h.fly(p.lon, p.lat, p.zoom); else locate() }, () => { toast.error('Place search is unavailable right now.'); locate() })
     else locate()
   }, [params, locate])
 
@@ -114,11 +117,13 @@ export default function MapPage({ embedded = false }: { embedded?: boolean }) {
       const low = t.toLowerCase()
       const st: Hit[] = rows.filter((r) => r[1].toLowerCase().includes(low) || r[2].toLowerCase().includes(low)).slice(0, 4).map((row) => ({ kind: 'station', row }))
       if (live) setHits(st)
-      const places = await geocode(t, me).catch(() => [])
-      if (live) setHits([...st, ...places])
+      const places = await geocode(t, me).catch(() => null)
+      if (!live) return
+      setGeoErr(!places)
+      setHits([...st, ...(places ?? [])])
     }, 250)
     return () => { live = false; clearTimeout(id) }
-  }, [q, me])
+  }, [q, me, retryKey])
 
   const openStation = async (row: IndexRow) => {
     map.current?.fly(row[3], row[4], 15)
@@ -140,12 +145,12 @@ export default function MapPage({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className={`map-card flex-1 ${embedded ? 'h-[620px] max-h-[75dvh]' : 'min-h-0 mx-2 md:mx-2.5 mb-2'}`}>
-      <Suspense fallback={<div className="absolute inset-0 skeleton !rounded-none" aria-busy="true" />}>
+      <ErrorBoundary label="The map" compact><Suspense fallback={<div className="absolute inset-0 skeleton !rounded-none" aria-busy="true" />}>
         <div className="absolute inset-0">
           <ChargerMap ref={ready} theme={theme} stations={shown} selected={sel?.id} me={me} onPick={(s) => { setNear(null); if (s.src.length) setSel(s); else getStation(s.id, s.lon, s.lat).then((full) => setSel(full ?? s)) }} onView={onView}
             layers={[{ label: 'DC fast chargers only', on: f.kind === 'dc', set: (v) => setF({ ...f, kind: v ? 'dc' : 'all' }), color: '#16a34a' }]} />
         </div>
-      </Suspense>
+      </Suspense></ErrorBoundary>
 
       {/* search + filters */}
       <div className="absolute z-30 left-3 right-3 top-3 md:right-auto md:w-[380px]">
@@ -167,6 +172,12 @@ export default function MapPage({ embedded = false }: { embedded?: boolean }) {
               </button></li>
             ))}
           </ul>
+        )}
+        {focus && geoErr && q.trim().length >= 2 && (
+          <div className="glass !rounded-2xl mt-2 p-3 text-sm flex items-center justify-between gap-2" role="status">
+            <span>Place search is unavailable right now.</span>
+            <button className="pill !h-8" onMouseDown={(e) => e.preventDefault()} onClick={() => setRetryKey((k) => k + 1)}>Retry</button>
+          </div>
         )}
         {showFilters && (
           <div className="glass !rounded-2xl mt-2 p-4 space-y-3 text-sm">
