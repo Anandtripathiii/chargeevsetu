@@ -170,7 +170,7 @@ export default function PlanningLab() {
       tour={TOUR}
       intro={
         <ol className="grid sm:grid-cols-3 gap-2 text-sm">
-          {[['Pick an area', 'Choose a state on the left'], ['Add or remove chargers on the map', 'Click a red area to add one'], ['See how many more people get a charger nearby', 'Results appear on the right']].map(([t, s], i) => (
+          {[['Pick an area', 'Choose a state in the controls panel'], ['Add or remove chargers on the map', 'Click a red area to add one'], ['See how many more people get a charger nearby', 'Results appear next to the map']].map(([t, s], i) => (
             <li key={t} className="card p-3 flex items-center gap-3">
               <span className="grid place-items-center w-8 h-8 rounded-full bg-accent-fill text-[#0b0b0c] font-semibold shrink-0">{i + 1}</span>
               <span className="min-w-0"><b className="block leading-tight">{t}</b><span className="text-xs text-muted">{s}</span></span>

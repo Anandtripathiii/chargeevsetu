@@ -24,7 +24,8 @@ function useMapReady(el: React.RefObject<HTMLDivElement | null>) {
     const arm = () => { armed = true; go() }
     const events = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'] as const
     events.forEach((e) => window.addEventListener(e, arm, { once: true, passive: true }))
-    return () => { io.disconnect(); events.forEach((e) => window.removeEventListener(e, arm)) }
+    const idle = setTimeout(arm, 1200) // no interaction yet: still load soon, so first-time visitors never see an empty box
+    return () => { clearTimeout(idle); io.disconnect(); events.forEach((e) => window.removeEventListener(e, arm)) }
   }, [ready, el])
   return [ready, start] as const
 }

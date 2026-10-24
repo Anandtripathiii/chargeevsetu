@@ -52,7 +52,7 @@ export function Info({ text }: { text: string }) {
   return (
     <span className="relative inline-flex group align-middle" tabIndex={0} aria-label={text}>
       <InfoIcon size={13} className="text-muted cursor-help" aria-hidden />
-      <span role="tooltip" className="pointer-events-none absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 rounded-lg bg-[#111827] text-white text-xs font-normal leading-snug p-2.5 shadow-xl opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity normal-case tracking-normal">{text}</span>
+      <span role="tooltip" className="pointer-events-none absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 rounded-lg bg-[#111827] text-white text-xs font-normal leading-snug p-2.5 shadow-xl hidden group-hover:block group-focus:block normal-case tracking-normal">{text}</span>
     </span>
   )
 }
