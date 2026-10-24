@@ -5,7 +5,7 @@ import { CalendarCheck, Camera, ChevronRight, CreditCard, EyeOff, Flag, Home, In
 import MapBase from '../components/LazyMap'
 import type { MapBaseHandle } from '../components/mapUtil'
 import { useTheme } from '../lib/theme'
-import { tooltipBox } from '../lib/tooltip'
+import { safeHtml, tooltipBox } from '../lib/tooltip'
 import { useLiveStatus, useSamples, type Listing } from '../lib/plugsy'
 import { toast } from 'sonner'
 import { Container, PageHeader, Skeleton } from '../components/ui'
@@ -135,7 +135,7 @@ function HomeChargers() {
               updateTriggers: { getFillColor: live, getRadius: selId, getLineColor: selId }, transitions: { getFillColor: 400 },
               onClick: (i: PickingInfo) => { if (i.object) setSelId((i.object as Listing).id) },
             })],
-            getTooltip: ({ object }: PickingInfo) => { const c = object as Listing | undefined; return c ? tooltipBox(`<b>${c.host_name}’s charger · ${c.area}</b><br/>${c.type} ${c.power_kw} kW · ₹${c.price_kwh}/kWh<br/>${STATUS[c.status][0]}${c.status === 'busy' && c.mins ? ` · free in ~${c.mins} min` : ''}`) : null },
+            getTooltip: ({ object }: PickingInfo) => { const c = object as Listing | undefined; return c ? tooltipBox(safeHtml`<b>${c.host_name}’s charger · ${c.area}</b><br/>${c.type} ${c.power_kw} kW · ₹${c.price_kwh}/kWh<br/>${STATUS[c.status][0]}${c.status === 'busy' && c.mins ? ` · free in ~${c.mins} min` : ''}`) : null },
           })}>
             {({ Marker }) => me && <Marker longitude={me[0]} latitude={me[1]}><div className="me-dot" aria-label="You are here" /></Marker>}
           </MapBase>

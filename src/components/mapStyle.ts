@@ -16,9 +16,9 @@ const PALETTE = {
   },
 }
 
-function paint(m: MLMap, id: string, prop: string, v: unknown) {
+function paint(m: MLMap, id: string, prop: string, v: string) {
   // shortcut: ignores layers a future liberty version renames; the map still renders with its default colours
-  try { m.setPaintProperty(id, prop, v) } catch { /* layer missing */ }
+  try { m.setPaintProperty(id, prop as Parameters<MLMap['setPaintProperty']>[1], v as Parameters<MLMap['setPaintProperty']>[2]) } catch { /* layer missing */ }
 }
 
 /** Recolour the loaded liberty style for the theme. Safe to call again on theme change. */

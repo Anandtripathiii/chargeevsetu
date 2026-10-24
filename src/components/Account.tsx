@@ -1,10 +1,13 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CalendarCheck, Loader2, LogOut, Mail, MailCheck, PlugZap, UserRound, X } from 'lucide-react'
+import { CalendarCheck, Loader2, LogOut, Mail, MailCheck, PlugZap, ShieldCheck, UserRound, X } from 'lucide-react'
 import { toast } from 'sonner'
+import Turnstile, { TURNSTILE_KEY } from './Turnstile'
+
+const AccountSettings = lazy(() => import('./AccountSettings')) // lazy: it imports Modal from this file
 import {
-  authProviders, DEMO, endRecovery, friendly, linkError, resetPassword, signInEmail, signInGoogle, signInPassword, signOut, signUp, updatePassword, useRecovering, useUser,
+  authProviders, DEMO, endRecovery, friendly, linkError, mfaVerify, resetPassword, signInEmail, signInGoogle, signInPassword, signOut, signUp, updatePassword, useRecovering, useUser,
 } from '../lib/backend'
 
 // Login dialog is global: any page can call openLogin() (e.g. "Write a review" while logged out).
@@ -55,31 +58,48 @@ export function LoginDialog() {
   const [sent, setSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [google, setGoogle] = useState(false)
+  const [captcha, setCaptcha] = useState('')
+  const [captchaKey, setCaptchaKey] = useState(0) // bump for a fresh challenge (tokens are single-use)
+  const [mfa, setMfa] = useState(false)
+  const [code, setCode] = useState('')
+  const onToken = useCallback((t: string) => setCaptcha(t), [])
   useEffect(() => { if (isOpen) authProviders().then((p) => setGoogle(p.google)) }, [isOpen])
   useEffect(() => { if (linkError) { toast.error(linkError); set(true) } }, [])
-  const close = () => { set(false); setSent(null); setError(null); setPassword('') }
+  const close = () => { set(false); setSent(null); setError(null); setPassword(''); setMfa(false); setCode('') }
   const go = (v: View) => { setView(v); setError(null); setSent(null) }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Please enter a valid email address.')
-    if ((view === 'login' || view === 'signup') && password.length < 6) return setError('Password must be at least 6 characters.')
+    if (TURNSTILE_KEY && !captcha && !mfa) return setError('Please complete the “I am human” check.')
     setBusy(true)
+    const t = captcha || undefined
     try {
-      if (view === 'login') { await signInPassword(email, password); toast.success('You are logged in'); close() }
+      if (mfa) { await mfaVerify(code); toast.success('You are logged in'); close() }
+      else if (view === 'login') { if ((await signInPassword(email, password, t)) === 'mfa') setMfa(true); else { toast.success('You are logged in'); close() } }
       else if (view === 'signup') {
-        const r = await signUp(email, password, name.trim())
-        if (r === 'confirm') setSent(`We sent a confirmation link to ${email}. Open it to activate your account, then log in.`)
+        const r = await signUp(email, password, name, t)
+        // same message whether or not the email already has an account
+        if (r === 'confirm') setSent(`If this email can be registered, we sent a confirmation link to ${email}. Open it to activate your account, then log in.`)
         else { toast.success('Account created. You are logged in'); close() }
-      } else if (view === 'forgot') { await resetPassword(email); setSent(`If ${email} has an account, we sent a link to set a new password.`) }
-      else { const r = await signInEmail(email); if (r === 'sent') setSent(`We sent a login link to ${email}. Open it on this device to finish logging in.`); else { toast.success('You are logged in'); close() } }
-    } catch (err) { setError(friendly(err)) } finally { setBusy(false) }
+      } else if (view === 'forgot') { await resetPassword(email, t); setSent('If this email is registered, you’ll get a link to set a new password.') }
+      else { const r = await signInEmail(email, t); if (r === 'sent') setSent('If this email is registered, you’ll get a login link. Open it on this device.'); else { toast.success('You are logged in'); close() } }
+    } catch (err) { setError(friendly(err)); setCaptcha(''); setCaptchaKey((k) => k + 1) } finally { setBusy(false) }
   }
   const googleIn = async () => { try { await signInGoogle(); if (DEMO) { toast.success('You are logged in'); close() } } catch (err) { setError(friendly(err)) } }
 
   if (recovering) return <NewPassword />
   const title = { login: 'Log in to ChargeEVSetu', signup: 'Create your account', forgot: 'Reset your password', link: 'Log in with an email link' }[view]
+  if (mfa) return (
+    <Modal open={isOpen} onClose={close} title="2-step login">
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-muted">Open your authenticator app and enter the 6-digit code for ChargeEVSetu.</p>
+        <input className="input tnum text-center text-lg tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} aria-label="6-digit code" autoFocus />
+        {error && <p role="alert" className="text-sm text-crit">{error}</p>}
+        <button className="btn btn-primary w-full justify-center" disabled={busy || code.length !== 6}>{busy ? 'Checking…' : 'Verify and log in'}</button>
+      </form>
+    </Modal>
+  )
   return (
     <Modal open={isOpen} onClose={close} title={title}>
       {sent ? (
@@ -109,7 +129,7 @@ export function LoginDialog() {
           <form onSubmit={submit} className="space-y-3" noValidate>
             {view === 'signup' && (
               <label className="block"><span className="text-xs text-muted">Your name</span>
-                <input className="input mt-1" autoComplete="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" />
+                <input className="input mt-1" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" />
               </label>
             )}
             <label className="block"><span className="text-xs text-muted">Email</span>
@@ -117,9 +137,10 @@ export function LoginDialog() {
             </label>
             {(view === 'login' || view === 'signup') && (
               <label className="block"><span className="flex justify-between text-xs text-muted">Password{view === 'login' && <button type="button" className="text-accent" onClick={() => go('forgot')}>Forgot password?</button>}</span>
-                <input className="input mt-1" type="password" autoComplete={view === 'login' ? 'current-password' : 'new-password'} minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={view === 'signup' ? 'At least 6 characters' : ''} required />
+                <input className="input mt-1" type="password" autoComplete={view === 'login' ? 'current-password' : 'new-password'} minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={view === 'signup' ? 'At least 8 characters, with a number or symbol' : ''} required />
               </label>
             )}
+            <Turnstile key={captchaKey} onToken={onToken} />
             {error && <p role="alert" className="text-sm text-crit bg-crit/10 border border-crit/30 rounded-xl p-2.5">{error}</p>}
             <button className="btn btn-primary w-full justify-center" disabled={busy}>
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
@@ -145,14 +166,13 @@ function NewPassword() {
   const [error, setError] = useState<string | null>(null)
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (pw.length < 6) return setError('Password must be at least 6 characters.')
     setBusy(true)
     try { await updatePassword(pw); toast.success('Password updated. You are logged in') } catch (err) { setError(friendly(err)) } finally { setBusy(false) }
   }
   return (
     <Modal open onClose={endRecovery} title="Set a new password">
       <form onSubmit={submit} className="space-y-3">
-        <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password (at least 6 characters)" aria-label="New password" />
+        <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password (at least 8 characters)" aria-label="New password" />
         {error && <p role="alert" className="text-sm text-crit">{error}</p>}
         <button className="btn btn-primary w-full justify-center" disabled={busy}>{busy ? 'Saving…' : 'Save new password'}</button>
       </form>
@@ -163,6 +183,7 @@ function NewPassword() {
 export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   const u = useUser()
   const [menu, setMenu] = useState(false)
+  const [settings, setSettings] = useState(false)
   if (!u) return (
     <button onClick={openLogin} aria-label="Log in" title="Log in"
       className="w-9 h-9 rounded-full grid place-items-center bg-active text-muted hover:text-text ring-2 ring-line transition-colors"><UserRound size={17} /></button>
@@ -180,9 +201,11 @@ export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
           <div className="px-3 py-2"><div className="text-sm font-medium truncate">{u.name}</div><div className="text-xs text-muted truncate">{u.email}</div></div>
           <Link className={item} to="/plugsy?tab=bookings" onClick={go}><CalendarCheck size={15} />My bookings</Link>
           <Link className={item} to="/plugsy?tab=host" onClick={go}><PlugZap size={15} />My chargers</Link>
+          <button className={item} onClick={() => { setSettings(true); go() }}><ShieldCheck size={15} />Security & privacy</button>
           <button className={item} onClick={() => { signOut().then(() => toast.success('You are logged out')); go() }}><LogOut size={15} />Log out</button>
         </motion.div>
       )}</AnimatePresence>
+      {settings && <Suspense fallback={null}><AccountSettings open={settings} onClose={() => setSettings(false)} /></Suspense>}
     </div>
   )
 }

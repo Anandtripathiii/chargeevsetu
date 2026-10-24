@@ -12,7 +12,7 @@ import { blendedRatio, cagrModel, chargersNeeded, logisticModel, parseCells, VEH
 import type { Region } from '../../lib/regions'
 import { downloadCsv } from '../../lib/csv'
 import { useExport } from '../../lib/exporter'
-import { tooltipBox } from '../../lib/tooltip'
+import { esc, raw, safeHtml, tooltipBox } from '../../lib/tooltip'
 import { useSites } from '../../lib/useSites'
 
 export type Scenario = 'low' | 'base' | 'high'
@@ -169,7 +169,7 @@ export default function Planner({ region, forecast, initialYear = 2030 }: { regi
                   new ScatterplotLayer<Site>({ id: 'sites', data: sites.sites, pickable: true, getPosition: (s) => [s.cell.lon, s.cell.lat], getRadius: 7, radiusUnits: 'pixels', getFillColor: [255, 255, 255, 255], getLineColor: [181, 242, 61, 255], stroked: true, lineWidthMinPixels: 3 }),
                 ] : [],
                 getTooltip: ({ object, layer }: PickingInfo) => layer?.id === 'sites' && object
-                  ? tooltipBox(`<b>Site #${(object as Site).rank}</b> · hub of ${hubSize} chargers<br/>${(object as Site).reasons.map((r) => `• ${r}`).join('<br/>')}`) : null,
+                  ? tooltipBox(safeHtml`<b>Site #${(object as Site).rank}</b> · hub of ${hubSize} chargers<br/>${raw((object as Site).reasons.map((r) => `• ${esc(r)}`).join('<br/>'))}`) : null,
               })} />
             </div>
             <div className="absolute left-3 top-3 card px-3 py-2 text-xs no-print">

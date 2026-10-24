@@ -16,7 +16,7 @@ import { buildRegions } from '../lib/regions'
 import { useSites } from '../lib/useSites'
 import { evaluate, prepare, type NetResult, type Virtual } from '../lib/network'
 import { stationIndex, type IndexRow } from '../lib/stations'
-import { tooltipBox } from '../lib/tooltip'
+import { raw as rawHtml, safeHtml, tooltipBox } from '../lib/tooltip'
 import { downloadCsv } from '../lib/csv'
 
 type Mode = 'add' | 'close'
@@ -153,10 +153,10 @@ export default function PlanningLab() {
   }
   const tip = ({ object, layer }: PickingInfo) => {
     if (!object) return null
-    if (layer?.id === 'real') { const r = object as IndexRow; return tooltipBox(`<b>${r[1]}</b><br/>${mode === 'close' ? (off.has(r[0]) ? 'Turned off · click to turn on' : 'Click to turn off') : 'Existing public charger'}`) }
-    if (layer?.id === 'sites') { const s = object as Site; const sc = Math.round(cellScore(s.cell) * 100); return tooltipBox(`<b>Suggested site #${s.rank} · ${placeName(s.cell.district)}</b><br/>${sc}/100 = ${suitWord(sc)}<br/>Click to add a charger here`) }
+    if (layer?.id === 'real') { const r = object as IndexRow; return tooltipBox(safeHtml`<b>${r[1]}</b><br/>${mode === 'close' ? (off.has(r[0]) ? 'Turned off · click to turn on' : 'Click to turn off') : 'Existing public charger'}`) }
+    if (layer?.id === 'sites') { const s = object as Site; const sc = Math.round(cellScore(s.cell) * 100); return tooltipBox(safeHtml`<b>Suggested site #${s.rank} · ${placeName(s.cell.district)}</b><br/>${sc}/100 = ${suitWord(sc)}<br/>Click to add a charger here`) }
     const c = object as Cell
-    return tooltipBox(`<b>${placeName(c.district)}</b><br/>~${compact(c.pop)} people · ~${compact(c.evs)} EVs (est.)<br/>${c.ch3 ? `${c.ch3} charging points within 3 km` : '<b>No public charger within 3 km</b>'}`)
+    return tooltipBox(safeHtml`<b>${placeName(c.district)}</b><br/>~${compact(c.pop)} people · ~${compact(c.evs)} EVs (est.)<br/>${c.ch3 ? `${c.ch3} charging points within 3 km` : rawHtml('<b>No public charger within 3 km</b>')}`)
   }
 
   const gained = covered(mod) - covered(base)

@@ -14,7 +14,7 @@ import { useTheme } from '../lib/theme'
 import { css, gradient, HEAT, ramp } from '../lib/colors'
 import { compact, fmt } from '../lib/format'
 import { FACTOR_INFO, FACTORS, score4, stateScores, type Factor, type Scored } from '../lib/gap4'
-import { tooltipBox } from '../lib/tooltip'
+import { safeHtml, tooltipBox } from '../lib/tooltip'
 
 const TOUR: TourStep[] = [
   { target: 'controls', title: 'Pick a state', text: 'Choose a state on the left, or click one on the map. Its districts appear, coloured by how underserved they are.' },
@@ -109,9 +109,9 @@ export default function GapAnalysis() {
   const tip = ({ object, layer }: PickingInfo) => {
     const p = (object as Feature | undefined)?.properties
     if (!p) return null
-    if (layer?.id === 'states') return tooltipBox(`<b>${p.state}</b><br/>Gap Score <b>${fmt(sScore.get(p.state) ?? 0)}</b> / 100<br/><span style="opacity:.7">Click to see districts</span>`)
+    if (layer?.id === 'states') return tooltipBox(safeHtml`<b>${p.state}</b><br/>Gap Score <b>${fmt(sScore.get(p.state) ?? 0)}</b> / 100<br/><span style="opacity:.7">Click to see districts</span>`)
     const d = byId.get(p.id)
-    return d ? tooltipBox(`<b>${d.name}</b>, ${d.state}<br/>Gap Score <b>${fmt(d.score)}</b> / 100 · #${d.pos} in India`) : null
+    return d ? tooltipBox(safeHtml`<b>${d.name}</b>, ${d.state}<br/>Gap Score <b>${fmt(d.score)}</b> / 100 · #${d.pos} in India`) : null
   }
 
   const reasons = sel ? why(sel) : []

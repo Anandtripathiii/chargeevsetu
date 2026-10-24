@@ -10,7 +10,7 @@ import { useTheme } from '../lib/theme'
 import { compact, fmt } from '../lib/format'
 import { haversineKm } from '../lib/model'
 import { kmText, stationIndex, type IndexRow } from '../lib/stations'
-import { tooltipBox } from '../lib/tooltip'
+import { safeHtml, tooltipBox } from '../lib/tooltip'
 
 interface HubArea { lon: number; lat: number; city: string; pop: number; stores: number; riders: number; kwh: number; chargers2km: number }
 interface Shared { lon: number; lat: number; areas: number; riders: number; points: number }
@@ -146,10 +146,10 @@ export default function Delivery() {
   }
   const tip = ({ object, layer }: PickingInfo) => {
     if (!object) return null
-    if (layer?.id === 'areas') { const a = object as HubArea; return tooltipBox(`<b>Estimated dark-store area</b><br/>~${a.stores} stores · ~${a.riders} riders<br/>~${fmt(a.kwh)} kWh/day of rider charging`) }
-    if (layer?.id === 'real') return tooltipBox(`<b>${(object as IndexRow)[1]}</b><br/>Public charger`)
+    if (layer?.id === 'areas') { const a = object as HubArea; return tooltipBox(safeHtml`<b>Estimated dark-store area</b><br/>~${a.stores} stores · ~${a.riders} riders<br/>~${fmt(a.kwh)} kWh/day of rider charging`) }
+    if (layer?.id === 'real') return tooltipBox(safeHtml`<b>${(object as IndexRow)[1]}</b><br/>Public charger`)
     const h = object as Shared
-    return tooltipBox(`<b>Shared hub</b><br/>Serves stores within 3 km<br/>~${h.points} charge / swap points`)
+    return tooltipBox(safeHtml`<b>Shared hub</b><br/>Serves stores within 3 km<br/>~${h.points} charge / swap points`)
   }
   const click = (i: PickingInfo) => {
     if (!tryIt || !i.coordinate || !hubsNow.length) return

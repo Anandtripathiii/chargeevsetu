@@ -5,13 +5,27 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import * as V from './validate'
+import { check } from './validate'
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 export const DEMO = !URL_ || !KEY
 
 let client: Promise<SupabaseClient> | null = null
-const sb = () => (client ??= import('@supabase/supabase-js').then(({ createClient }) => createClient(URL_!, KEY!)))
+/** Retries reads (and any request that never reached the server) twice, so a brief Supabase hiccup is invisible. */
+async function retryFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const safe = !init?.method || init.method === 'GET' || init.method === 'HEAD'
+  for (let i = 0; ; i++) {
+    try {
+      const r = await fetch(input, init)
+      if (!safe || i >= 2 || ![502, 503, 504].includes(r.status)) return r
+    } catch (e) { if (i >= 2) throw e } // network error: the request never arrived, retrying is safe
+    await new Promise((ok) => setTimeout(ok, 400 * 2 ** i))
+  }
+}
+const sb = () => (client ??= import('@supabase/supabase-js').then(({ createClient }) => createClient(URL_!, KEY!, { global: { fetch: retryFetch } })))
+export const UNAVAILABLE = 'Service temporarily unavailable. Please try again shortly.'
 
 // ---------------- types ----------------
 export interface User { id: string; email: string; name: string }
@@ -94,10 +108,13 @@ export function friendly(err: unknown): string {
   if (/provider is not enabled|unsupported provider/i.test(m)) return 'Google login is not turned on yet. Please use your email.'
   if (/password.*(at least|short|weak)/i.test(m)) return 'Password must be at least 6 characters.'
   if (/signups? not allowed/i.test(m)) return 'New sign-ups are closed right now.'
-  if (/failed to fetch|network/i.test(m)) return 'Cannot reach the server. Please check your internet and try again.'
+  if (/captcha/i.test(m)) return 'Please complete the “I am human” check and try again.'
+  if (/too many requests|P0429/i.test(m)) return 'Too many requests. Please wait a while and try again.'
+  if (/failed to fetch|network|load failed|fetch failed|50[234]|timeout|upstream/i.test(m)) return UNAVAILABLE
+  if (/violates (check|row-level)|permission denied|42501/i.test(m)) return 'That change is not allowed.'
   return m
 }
-const wrap = async <R extends { data: unknown; error: unknown }>(p: Promise<R>): Promise<R['data']> => { const r = await p; if (r.error) throw new Error(friendly(r.error)); return r.data }
+const wrap = async <R extends { data: unknown; error: unknown }>(p: PromiseLike<R>): Promise<R['data']> => { const r = await p; if (r.error) throw new Error(friendly(r.error)); return r.data }
 const home = () => location.origin + import.meta.env.BASE_URL
 
 /** Which sign-in methods the Supabase project has switched on (Google only shows when enabled). */
@@ -109,39 +126,94 @@ export async function authProviders(): Promise<{ google: boolean }> {
 
 const demoLogin = (email: string, name?: string) => { db.user = { id: `u-${email}`, email, name: name || email.split('@')[0] }; save(); setUser(db.user) }
 
-export async function signInEmail(email: string): Promise<'sent' | 'signed-in'> {
+// captchaToken: Cloudflare Turnstile token when VITE_TURNSTILE_SITE_KEY is set (Supabase verifies it)
+export async function signInEmail(email: string, captchaToken?: string): Promise<'sent' | 'signed-in'> {
+  email = check(V.email, email)
   if (DEMO) { demoLogin(email); return 'signed-in' }
-  await wrap((await sb()).auth.signInWithOtp({ email, options: { emailRedirectTo: home() } }))
+  await wrap((await sb()).auth.signInWithOtp({ email, options: { emailRedirectTo: home(), captchaToken } }))
   return 'sent'
 }
-export async function signInPassword(email: string, password: string) {
-  if (DEMO) return demoLogin(email)
-  await wrap((await sb()).auth.signInWithPassword({ email, password }))
+/** Returns 'mfa' when the account has 2-step login on and still needs the 6-digit code. */
+export async function signInPassword(email: string, password: string, captchaToken?: string): Promise<'ok' | 'mfa'> {
+  email = check(V.email, email); check(V.loginPassword, password)
+  if (DEMO) { demoLogin(email); return 'ok' }
+  const c = await sb()
+  await wrap(c.auth.signInWithPassword({ email, password, options: { captchaToken } }))
+  const { data } = await c.auth.mfa.getAuthenticatorAssuranceLevel()
+  return data && data.nextLevel === 'aal2' && data.currentLevel !== 'aal2' ? 'mfa' : 'ok'
 }
-/** 'confirm' when the project needs the visitor to click the email link first. */
-export async function signUp(email: string, password: string, name: string): Promise<'confirm' | 'signed-in'> {
+/** Always 'confirm' unless the project signs people in straight away; never reveals whether the email already exists. */
+export async function signUp(email: string, password: string, name: string, captchaToken?: string): Promise<'confirm' | 'signed-in'> {
+  email = check(V.email, email); check(V.newPassword, password); name = check(V.personName, name)
   if (DEMO) { demoLogin(email, name); return 'signed-in' }
-  const d = await wrap((await sb()).auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: home() } }))
-  // Supabase returns a user with no identities when the email is already registered (to avoid leaking accounts)
-  if (d.user && !d.user.identities?.length) throw new Error(friendly('already registered'))
+  const d = await wrap((await sb()).auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: home(), captchaToken } }))
   return d.session ? 'signed-in' : 'confirm'
 }
-export async function resetPassword(email: string) {
+export async function resetPassword(email: string, captchaToken?: string) {
+  email = check(V.email, email)
   if (DEMO) return
-  await wrap((await sb()).auth.resetPasswordForEmail(email, { redirectTo: home() }))
+  await wrap((await sb()).auth.resetPasswordForEmail(email, { redirectTo: home(), captchaToken }))
 }
 export async function updatePassword(password: string) {
+  check(V.newPassword, password)
   if (DEMO) { setRecovering(false); return }
   await wrap((await sb()).auth.updateUser({ password }))
   setRecovering(false)
+}
+
+// ---------------- 2-step login (TOTP, Supabase MFA) ----------------
+export async function mfaStatus(): Promise<{ on: boolean; factorId?: string }> {
+  if (DEMO) return { on: false }
+  const { data } = await (await sb()).auth.mfa.listFactors()
+  const f = data?.totp.find((x) => x.status === 'verified')
+  return { on: !!f, factorId: f?.id }
+}
+/** Starts enrolment: returns the QR code (SVG data URL) and secret to type into an authenticator app. */
+export async function mfaEnroll(): Promise<{ factorId: string; qr: string; secret: string }> {
+  if (DEMO) throw new Error('2-step login needs the live service.')
+  const d = await wrap((await sb()).auth.mfa.enroll({ factorType: 'totp', friendlyName: `Plugsy ${new Date().toISOString().slice(0, 10)}` }))
+  if (!d) throw new Error(UNAVAILABLE)
+  return { factorId: d.id, qr: d.totp.qr_code, secret: d.totp.secret }
+}
+/** Verifies a 6-digit code for a factor (finishes enrolment, or completes a login that needs 2-step). */
+export async function mfaVerify(code: string, factorId?: string) {
+  if (!/^\d{6}$/.test(code)) throw new Error('Enter the 6-digit code from your authenticator app.')
+  const c = await sb()
+  const id = factorId ?? (await mfaStatus()).factorId
+  if (!id) throw new Error('2-step login is not set up on this account.')
+  await wrap(c.auth.mfa.challengeAndVerify({ factorId: id, code }))
+}
+export async function mfaDisable() {
+  const { factorId } = await mfaStatus()
+  if (factorId) await wrap((await sb()).auth.mfa.unenroll({ factorId }))
+}
+
+/** Delete my account: my photos, then every row I own and the login itself (delete_my_account RPC). */
+export async function deleteAccount() {
+  const u = need()
+  if (DEMO) {
+    const mine = new Set(db.chargers.filter((c) => c.host_id === u.id).map((c) => c.id))
+    db.reviews = db.reviews.filter((r) => r.user_id !== u.id); db.bookings = db.bookings.filter((b) => b.user_id !== u.id && !mine.has(b.charger_id))
+    db.chargers = db.chargers.filter((c) => !mine.has(c.id)); db.user = null; save(); setUser(null); return
+  }
+  const c = await sb()
+  for (const bucket of ['charger-photos', 'report-photos']) {
+    const { data } = await c.storage.from(bucket).list(u.id, { limit: 1000 })
+    if (data?.length) await c.storage.from(bucket).remove(data.map((f) => `${u.id}/${f.name}`))
+  }
+  const { error } = await c.rpc('delete_my_account')
+  if (error) throw new Error(friendly(error))
+  await c.auth.signOut({ scope: 'local' })
+  setUser(null)
 }
 export async function signInGoogle() {
   if (DEMO) return void demoLogin('demo.user@gmail.com')
   await wrap((await sb()).auth.signInWithOAuth({ provider: 'google', options: { redirectTo: home() } }))
 }
-export async function signOut() {
+/** everywhere: also ends the session on every other device. */
+export async function signOut(everywhere = false) {
   if (DEMO) { db.user = null; save(); setUser(null); return }
-  const { error } = await (await sb()).auth.signOut()
+  const { error } = await (await sb()).auth.signOut({ scope: everywhere ? 'global' : 'local' })
   if (error) setUser(null) // local sign-out still clears this tab
 }
 const need = () => { if (!current) throw new Error('Please log in first'); return current }
@@ -149,30 +221,31 @@ const need = () => { if (!current) throw new Error('Please log in first'); retur
 // ---------------- reviews & reports ----------------
 export async function listReviews(stationId: string): Promise<Review[]> {
   if (DEMO) return db.reviews.filter((r) => r.station_id === stationId).sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const { data, error } = await (await sb()).from('reviews').select('*').eq('station_id', stationId).order('created_at', { ascending: false }).limit(50)
-  if (error) throw error
+  const { data, error } = await (await sb()).from('reviews').select('id, station_id, user_id, author, rating, body, created_at').eq('station_id', stationId).order('created_at', { ascending: false }).limit(50)
+  if (error) throw new Error(friendly(error))
   return data as Review[]
 }
 export async function addReview(station_id: string, rating: number, body: string) {
   const u = need()
-  const r = { station_id, rating, body: body.trim().slice(0, 1000), user_id: u.id, author: u.name }
+  const r = { ...check(V.review, { station_id, rating, body }), user_id: u.id, author: u.name.slice(0, 100) }
   if (DEMO) { db.reviews.push({ ...r, id: uid(), created_at: now() }); save(); return }
   const { error } = await (await sb()).from('reviews').insert(r)
-  if (error) throw error
+  if (error) throw new Error(/duplicate|unique/i.test(error.message) ? 'You have already reviewed this station.' : friendly(error))
 }
 export async function addReport(station_id: string, kind: ReportKind, note: string, photo?: File | null) {
   const u = need()
-  if (photo && (photo.size > 5e6 || !photo.type.startsWith('image/'))) throw new Error('Photo must be an image under 5 MB')
+  ;({ station_id, kind, note } = check(V.report, { station_id, kind, note }))
+  if (photo) check(V.photo, photo)
   if (DEMO) { db.reports.push({ station_id, kind, note, user_id: u.id, photo: photo?.name ?? null, created_at: now() }); save(); return }
   const c = await sb()
   let photo_path: string | null = null
   if (photo) {
-    photo_path = `${u.id}/${uid()}-${photo.name.replace(/[^\w.-]/g, '_')}`
-    const { error } = await c.storage.from('report-photos').upload(photo_path, photo)
-    if (error) throw error
+    photo_path = `${u.id}/${uid()}.${photo.type.split('/')[1].replace('jpeg', 'jpg')}`
+    const { error } = await c.storage.from('report-photos').upload(photo_path, photo, { contentType: photo.type })
+    if (error) throw new Error(friendly(error))
   }
-  const { error } = await c.from('reports').insert({ station_id, kind, note: note.slice(0, 1000), user_id: u.id, photo_path })
-  if (error) throw error
+  const { error } = await c.from('reports').insert({ station_id, kind, note, user_id: u.id, photo_path })
+  if (error) throw new Error(friendly(error))
 }
 
 // ---------------- Plugsy ----------------
@@ -183,7 +256,8 @@ export function useHomeChargers(): HomeCharger[] | null {
     if (DEMO) { const f = () => setList([...db.chargers]); subs.add(f); return () => { subs.delete(f) } }
     let live = true, off = () => {}
     sb().then(async (c) => {
-      const load = async () => { const { data } = await c.from('home_chargers').select('*').order('created_at'); if (live && data) setList(data as HomeCharger[]) }
+      // public columns only, max 100 rows per request
+      const load = async () => { const { data } = await c.from('home_chargers').select('id, host_id, host_name, title, area, lon, lat, type, power_kw, connector, price_kwh, hours, status, verified, photos, created_at').order('created_at', { ascending: false }).range(0, 99); if (live) setList((data ?? []) as HomeCharger[]) }
       await load()
       // unique name per hook: removeChannel must not close another listener's channel
       const ch = c.channel(`home_chargers-${uid()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'home_chargers' }, load).subscribe()
@@ -197,7 +271,7 @@ export function useHomeChargers(): HomeCharger[] | null {
 export async function setChargerStatus(id: string, status: PlugStatus) {
   if (DEMO) { const c = db.chargers.find((x) => x.id === id); if (c) c.status = status; save(); return }
   const { error } = await (await sb()).from('home_chargers').update({ status }).eq('id', id)
-  if (error) throw error
+  if (error) throw new Error(friendly(error))
 }
 
 export const PRICE_LIMITS = { min: 5, max: 30 } // ₹ per kWh
@@ -206,8 +280,9 @@ export const fuzz = (x: number) => Math.round(x * 200) / 200
 
 export async function addHomeCharger(c: Omit<HomeCharger, 'id' | 'host_id' | 'host_name' | 'status' | 'verified' | 'photos' | 'created_at'>, address: string, photos: File[]) {
   const u = need()
-  if (c.price_kwh < PRICE_LIMITS.min || c.price_kwh > PRICE_LIMITS.max) throw new Error(`Price must be ₹${PRICE_LIMITS.min}–${PRICE_LIMITS.max} per kWh`)
-  const row = { ...c, lon: fuzz(c.lon), lat: fuzz(c.lat), host_id: u.id, host_name: u.name, status: 'offline' as const, verified: false }
+  c = check(V.homeCharger, c); address = check(V.address, address)
+  photos.forEach((p) => check(V.photo, p))
+  const row = { ...c, lon: fuzz(c.lon), lat: fuzz(c.lat), host_id: u.id, host_name: u.name.slice(0, 100), status: 'offline' as const, verified: false }
   if (DEMO) {
     const id = uid()
     db.chargers.push({ ...row, id, photos: photos.map((p) => p.name), created_at: now() })
@@ -217,18 +292,19 @@ export async function addHomeCharger(c: Omit<HomeCharger, 'id' | 'host_id' | 'ho
   const cl = await sb()
   const paths: string[] = []
   for (const p of photos.slice(0, 4)) {
-    const path = `${u.id}/${uid()}-${p.name.replace(/[^\w.-]/g, '_')}`
-    const { error } = await cl.storage.from('charger-photos').upload(path, p)
+    const path = `${u.id}/${uid()}.${p.type.split('/')[1].replace('jpeg', 'jpg')}`
+    const { error } = await cl.storage.from('charger-photos').upload(path, p, { contentType: p.type })
     if (!error) paths.push(path)
   }
   const { data, error } = await cl.from('home_chargers').insert({ ...row, photos: paths }).select('id').single()
-  if (error) throw error
+  if (error) throw new Error(friendly(error))
   const { error: e2 } = await cl.from('home_charger_private').insert({ charger_id: data.id, host_id: u.id, address })
-  if (e2) throw e2
+  if (e2) throw new Error(friendly(e2))
 }
 
 export async function createBooking(ch: HomeCharger, start_at: string, hours: number): Promise<Booking> {
   const u = need()
+  check(V.booking, { start_at, hours })
   const amount = Math.round(ch.power_kw * hours * ch.price_kwh * 0.9 + 10) // ~90% of rated power on average + ₹10 platform fee
   // sample (pilot demo) listings are booked locally even when Supabase is connected
   if (DEMO || ch.id.startsWith('sample-')) {
@@ -238,7 +314,7 @@ export async function createBooking(ch: HomeCharger, start_at: string, hours: nu
     save(); return b
   }
   const { data, error } = await (await sb()).rpc('book_charger', { p_charger: ch.id, p_start: start_at, p_hours: hours })
-  if (error) throw error
+  if (error) throw new Error(friendly(error))
   return data as Booking
 }
 
@@ -258,7 +334,7 @@ export function useBookings(): { mine: Booking[]; hosting: Booking[] } | null {
     let live = true
     sb().then(async (c) => {
       // RLS returns only rows where I'm the booker or the host; the view joins the private address for my own bookings
-      const { data } = await c.from('bookings_view').select('*').order('start_at', { ascending: false })
+      const { data } = await c.from('bookings_view').select('*').order('start_at', { ascending: false }).range(0, 99)
       if (!live || !data) return
       const rows = data as (Booking & { host_id: string })[]
       const local = db.bookings.filter((b) => b.user_id === u.id) // pilot-demo bookings on sample listings
@@ -270,8 +346,8 @@ export function useBookings(): { mine: Booking[]; hosting: Booking[] } | null {
 }
 
 export async function requestInstall(r: InstallRequest) {
-  if (!r.name.trim() || !/^[\d +-]{8,15}$/.test(r.phone)) throw new Error('Please enter your name and a valid phone number')
+  r = check(V.install, r)
   if (DEMO) { db.installs.push({ ...r, created_at: now() }); save(); return }
   const { error } = await (await sb()).from('install_requests').insert({ ...r, user_id: current?.id ?? null })
-  if (error) throw error
+  if (error) throw new Error(friendly(error))
 }

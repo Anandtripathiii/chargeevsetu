@@ -13,7 +13,7 @@ import { useTheme } from '../../lib/theme'
 import { css, GAP, gradient, MAGMA, quantileScale, ramp, VIRIDIS } from '../../lib/colors'
 import { compact, fmt, pct } from '../../lib/format'
 import { greedySites, parseCells, VEHICLE_TYPES, type Site } from '../../lib/model'
-import { tooltipBox } from '../../lib/tooltip'
+import { esc, raw, safeHtml, tooltipBox } from '../../lib/tooltip'
 import { stationIndex, type IndexRow } from '../../lib/stations'
 import { downloadCsv } from '../../lib/csv'
 import { useExport } from '../../lib/exporter'
@@ -265,23 +265,23 @@ export default function MapPage() {
     if (!object || !layer) return null
     if (layer.id === 'states') {
       const s = stateByName.get((object as Feature).properties?.state)
-      return s ? tooltipBox(`<b>${s.state}</b><br/>EVs: ${compact(s.evs)} · Chargers: ${fmt(s.chargers)}<br/>EVs per charger: ${fmt(s.evs_per_charger)} · Gap Score: ${fmt(s.gap_score, 1)}<br/><span style="opacity:.7">Click to open districts</span>`) : null
+      return s ? tooltipBox(safeHtml`<b>${s.state}</b><br/>EVs: ${compact(s.evs)} · Chargers: ${fmt(s.chargers)}<br/>EVs per charger: ${fmt(s.evs_per_charger)} · Gap Score: ${fmt(s.gap_score, 1)}<br/><span style="opacity:.7">Click to open districts</span>`) : null
     }
     if (layer.id === 'districts') {
       const d = distById.get((object as Feature).properties?.id)
-      return d ? tooltipBox(`<b>${d.name}</b>, ${d.state}<br/>EVs (est.): ${compact(d.evs)} · Chargers (est.): ${fmt(d.chargers)}<br/>EVs per charger: ${fmt(d.evs_per_charger)}<br/>Gap Score: ${fmt(d.gap_score, 1)} · rank ${d.rank} of ${districts?.length}`) : null
+      return d ? tooltipBox(safeHtml`<b>${d.name}</b>, ${d.state}<br/>EVs (est.): ${compact(d.evs)} · Chargers (est.): ${fmt(d.chargers)}<br/>EVs per charger: ${fmt(d.evs_per_charger)}<br/>Gap Score: ${fmt(d.gap_score, 1)} · rank ${d.rank} of ${districts?.length}`) : null
     }
     if (layer.id === 'highways') {
       const s = object as Seg
-      return tooltipBox(`<b>${s[0]}</b><br/>Nearest charger: ${s[2]} km<br/>${s[1] ? '<b style="color:var(--crit)">Gap: no charger within 12.5 km either side</b>' : 'Covered at ≤ 25 km spacing'}`)
+      return tooltipBox(safeHtml`<b>${s[0]}</b><br/>Nearest charger: ${s[2]} km<br/>${s[1] ? raw('<b style="color:var(--crit)">Gap: no charger within 12.5 km either side</b>') : 'Covered at ≤ 25 km spacing'}`)
     }
     if (layer.id === 'arcs') {
       const a = object as Arc
-      return tooltipBox(`<b>${a.from} → ${a.to}</b> · ${a.ref}<br/>${fmt(a.gapKm)} km of the whole ${a.ref} has no charger within 12.5 km either side<br/><span style="opacity:.7">${a.gapKm < GAP_ROUTE_KM ? 'Solid: largely covered' : `Dashed: ≥ ${GAP_ROUTE_KM} km of gap stretches`}</span>`)
+      return tooltipBox(safeHtml`<b>${a.from} → ${a.to}</b> · ${a.ref}<br/>${fmt(a.gapKm)} km of the whole ${a.ref} has no charger within 12.5 km either side<br/><span style="opacity:.7">${a.gapKm < GAP_ROUTE_KM ? 'Solid: largely covered' : `Dashed: ≥ ${GAP_ROUTE_KM} km of gap stretches`}</span>`)
     }
     if (layer.id === 'recs') {
       const s = object as Site
-      return tooltipBox(`<b>Recommended site #${s.rank}</b> · why here?<br/>${s.reasons.map((r) => `• ${r}`).join('<br/>')}`)
+      return tooltipBox(safeHtml`<b>Recommended site #${s.rank}</b> · why here?<br/>${raw(s.reasons.map((r) => `• ${esc(r)}`).join('<br/>'))}`)
     }
     return null
   }

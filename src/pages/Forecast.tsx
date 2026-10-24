@@ -15,7 +15,7 @@ import { css, gradient, HEAT, quantileScale, ramp } from '../lib/colors'
 import { compact, fmt } from '../lib/format'
 import { blendedRatio, chargersNeeded, VEHICLE_TYPES } from '../lib/model'
 import { axisStyle, chartAnim, tipStyle } from '../lib/chartStyle'
-import { tooltipBox } from '../lib/tooltip'
+import { safeHtml, tooltipBox } from '../lib/tooltip'
 
 type Scn = 'low' | 'base' | 'high'
 const SCN: [Scn, string][] = [['low', 'Slow'], ['base', 'Normal'], ['high', 'Fast']]
@@ -118,7 +118,7 @@ export default function Forecast() {
           <MapBase basemap={theme} onReady={() => setMapOn(true)} layers={[{ label: 'Real public chargers today', on: showCh, set: setShowCh, color: '#16a34a' }]}
             deck={(_, k) => ({ layers: layers(k), getTooltip: ({ object }: PickingInfo) => {
               const r = object && (object as Feature).properties && byName.get((object as Feature).properties?.state)
-              return r ? tooltipBox(`<b>${r.name}</b><br/>~${compact(r.evs)} EVs by ${year}<br/>~${compact(r.additional)} extra charging points needed`) : null
+              return r ? tooltipBox(safeHtml`<b>${r.name}</b><br/>~${compact(r.evs)} EVs by ${year}<br/>~${compact(r.additional)} extra charging points needed`) : null
             } })} />
           <div className="absolute left-3 bottom-3 glass p-3 w-60"><Legend title={`Extra charging points needed by ${year}`} stops={gradient(HEAT)} lo={compact(scale.lo)} hi={compact(scale.hi)} /></div>
         </div>
