@@ -298,3 +298,6 @@ html.lenis, html.lenis body { height: auto; }
   .app-shell { padding: 0 !important; }
   .card, .glass { box-shadow: none !important; backdrop-filter: none !important; background: #fff !important; border-color: #ccc !important; }
 }
+
+/* guided tour highlight */
+.tour-focus { position: relative; z-index: 110; outline: 3px solid var(--accent-fill); outline-offset: 4px; border-radius: 18px; transition: outline-color 0.2s; }
