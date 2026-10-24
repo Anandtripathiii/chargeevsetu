@@ -1,8 +1,8 @@
-// Builds the public map data from the raw OpenStreetMap export:
+// Builds the public map data from the raw open charger lists (scripts/fetch-chargers.mjs): OpenStreetMap + Open Charge Map.
 //   public/data/tiles/7/{x}/{y}.json  real stations, cut into z7 web-mercator tiles (the map loads only visible tiles)
 //   public/data/stations-index.json   compact list for search / "near me"
 //   public/data/hubs.json             estimated delivery hub areas (dense urban cells)
-// Usage: node scripts/build-map-data.mjs [path/to/overpass.json]   (default data/raw/osm/chargers_full.json)
+// Usage: node scripts/build-map-data.mjs [path/to/overpass.json]   (default data/raw/osm/chargers_full.json; OCM merged when data/raw/ocm/ocm_in.json exists)
 import fs from 'node:fs'
 import path from 'node:path'
 import assert from 'node:assert'
@@ -50,14 +50,30 @@ function station(e) {
   }
 }
 
+const OCM_PLUGS = { 1: 'Type 1', 2: 'CHAdeMO', 25: 'Type 2', 1036: 'Type 2', 32: 'CCS1', 33: 'CCS2', 28: '15A socket', 27: 'Tesla', 30: 'Tesla' }
+function ocmStation(p) {
+  const a = p.AddressInfo || {}
+  if (a.Latitude == null) return null
+  const plugs = (p.Connections || []).map((c) => ({ type: OCM_PLUGS[c.ConnectionTypeID] || 'Other', count: c.Quantity || null, kw: c.PowerKW || null }))
+  const maxKw = Math.max(0, ...plugs.map((x) => x.kw || 0)) || null
+  return {
+    id: `ocm${p.ID}`, lon: +a.Longitude.toFixed(5), lat: +a.Latitude.toFixed(5), name: a.Title || 'EV charging station', operator: null,
+    dc: plugs.some((x) => DC_PLUGS.has(x.type)) || (maxKw ?? 0) >= 25, kw: maxKw, plugs, points: p.NumberOfPoints || null,
+    price: p.UsageCost || null, hours: null, address: [a.AddressLine1, a.Town, a.Postcode].filter(Boolean).join(', ') || null,
+    access: null, src: ['Open Charge Map'],
+  }
+}
+
 const richness = (s) => Object.values(s).filter((v) => v != null && v !== '' && !(Array.isArray(v) && !v.length)).length
 
-/** Merge duplicates: within 60 m and same name (or one is unnamed); keeps the record with more details. */
+const norm = (n) => n.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+/** Names count as similar when equal, one contains the other, or they share the first word (brand), or one is generic. */
+const similar = (a, b) => { const x = norm(a), y = norm(b); return x === y || x.includes(y) || y.includes(x) || x.split(' ')[0] === y.split(' ')[0] || /^ev charging station$/.test(x) || /^ev charging station$/.test(y) }
+/** Merge duplicates: within 50 m and a similar name; keeps the record with more details and both sources. */
 export function dedupe(list) {
   const out = []
   for (const s of list.sort((a, b) => richness(b) - richness(a))) {
-    const dup = out.find((o) => km([o.lon, o.lat], [s.lon, s.lat]) < 0.06 &&
-      (o.name === s.name || o.name === 'EV charging station' || s.name === 'EV charging station'))
+    const dup = out.find((o) => km([o.lon, o.lat], [s.lon, s.lat]) < 0.05 && similar(o.name, s.name))
     if (!dup) { out.push(s); continue }
     for (const [k, v] of Object.entries(s)) if (dup[k] == null && v != null) dup[k] = v
     dup.src = [...new Set([...dup.src, ...s.src])]
@@ -68,17 +84,24 @@ export function dedupe(list) {
 // self-check: two nearby copies merge, a distant one stays
 assert.equal(dedupe([
   { id: 'a', lon: 77, lat: 28, name: 'X', src: ['OpenStreetMap'] },
-  { id: 'b', lon: 77.0002, lat: 28.0002, name: 'X', price: '₹18/kWh', src: ['OpenStreetMap'] },
+  { id: 'b', lon: 77.0002, lat: 28.0002, name: 'x', price: '₹18/kWh', src: ['OpenStreetMap'] },
   { id: 'c', lon: 77.1, lat: 28, name: 'X', src: ['OpenStreetMap'] },
 ]).length, 2)
 assert.deepEqual(tileOf(77.2, 28.6), [91, 53])
 
 const raw = JSON.parse(fs.readFileSync(SRC, 'utf8')).elements
+const OCM = 'data/raw/ocm/ocm_in.json'
+const ocmRaw = fs.existsSync(OCM) ? JSON.parse(fs.readFileSync(OCM, 'utf8')) : []
 const districts = JSON.parse(fs.readFileSync(`${OUT}/districts.json`, 'utf8'))
-const near = (lon, lat) => districts.reduce((b, d) => { const x = km([lon, lat], [d.lon, d.lat]); return x < b[0] ? [x, d] : b }, [Infinity, null])[1]
 
-const stations = dedupe(raw.map(station).filter(Boolean))
-for (const s of stations) { const d = near(s.lon, s.lat); s.area = `${d.name}, ${d.state}` }
+const nearest = (lon, lat) => districts.reduce((b, d) => { const x = km([lon, lat], [d.lon, d.lat]); return x < b[0] ? [x, d] : b }, [Infinity, null])
+// drop points >150 km from every Indian district centroid (bbox tiles leak into Nepal, Bangladesh …)
+const stations = dedupe([...raw.map(station), ...(Array.isArray(ocmRaw) ? ocmRaw : []).map(ocmStation)].filter(Boolean)).filter((s) => {
+  const [d, dist] = nearest(s.lon, s.lat).reverse()
+  if (dist > 150) return false
+  s.area = `${d.name}, ${d.state}`; s.state = d.state
+  return true
+})
 
 fs.rmSync(`${OUT}/tiles`, { recursive: true, force: true })
 const tiles = new Map()
@@ -92,7 +115,12 @@ for (const [k, list] of tiles) {
   fs.mkdirSync(path.dirname(f), { recursive: true })
   fs.writeFileSync(f, JSON.stringify(list))
 }
-fs.writeFileSync(`${OUT}/tiles/index.json`, JSON.stringify({ z: Z, tiles: [...tiles.keys()], count: stations.length, built: new Date().toISOString().slice(0, 10) }))
+// per-state coverage: mapped here vs the official (Ministry of Power) count, for the "Govt reports X; Y mapped" notes
+const official = JSON.parse(fs.readFileSync(`${OUT}/states.json`, 'utf8'))
+const states = Object.fromEntries(official.map((s) => [s.state, { mapped: 0, official: s.official_chargers_2025, osm: 0, ocm: 0 }]))
+for (const s of stations) { const r = states[s.state]; if (!r) continue; r.mapped++; if (s.src.includes('OpenStreetMap')) r.osm++; if (s.src.includes('Open Charge Map')) r.ocm++ }
+const bySrc = { osm: stations.filter((s) => s.src.includes('OpenStreetMap')).length, ocm: stations.filter((s) => s.src.includes('Open Charge Map')).length }
+fs.writeFileSync(`${OUT}/tiles/index.json`, JSON.stringify({ z: Z, tiles: [...tiles.keys()], count: stations.length, built: new Date().toISOString().slice(0, 10), sources: bySrc, states }))
 fs.writeFileSync(`${OUT}/stations-index.json`, JSON.stringify(stations.map((s) => [s.id, s.name, s.area, s.lon, s.lat, s.dc ? 1 : 0])))
 
 // Estimated delivery hub areas: the densest 2 km cells of big cities.
@@ -111,4 +139,5 @@ for (const [slug, city] of Object.entries(CITY_REGIONS)) {
   })
 }
 fs.writeFileSync(`${OUT}/hubs.json`, JSON.stringify(hubs))
-console.log(`${raw.length} raw -> ${stations.length} stations in ${tiles.size} tiles; ${hubs.length} hub areas`)
+console.log(`${raw.length} OSM + ${ocmRaw.length} OCM raw -> ${stations.length} stations in ${tiles.size} tiles; ${hubs.length} hub areas`)
+for (const [st, r] of Object.entries(states).sort((a, b) => b[1].mapped - a[1].mapped)) console.log(`  ${st.padEnd(38)} ${String(r.mapped).padStart(5)} mapped / ${r.official} official`)
