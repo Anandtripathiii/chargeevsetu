@@ -8,6 +8,7 @@ import { useExporter } from '../lib/exporter'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Innovations = lazy(() => import('./pages/Innovations'))
+const Security = lazy(() => import('./pages/Security'))
 const DataMap = lazy(() => import('./pages/DataMap'))
 const Estimation = lazy(() => import('./pages/Estimation'))
 const CaseStudy = lazy(() => import('./pages/CaseStudy'))
@@ -18,7 +19,7 @@ const About = lazy(() => import('./pages/About'))
 
 const NAV: [string, string][] = [
   ['/', 'Data quality'], ['/innovations', 'Our innovations'], ['/map', 'All layers map'], ['/estimate', 'Estimation controls'], ['/case-study', 'Case study'],
-  ['/methodology', 'Methodology'], ['/data-sources', 'Data sources'], ['/roadmap', 'Roadmap'], ['/about', 'Team & disclosure'],
+  ['/methodology', 'Methodology'], ['/data-sources', 'Data sources'], ['/roadmap', 'Roadmap'], ['/about', 'Team & disclosure'], ['/security', 'Security'],
 ]
 
 function Shell() {
@@ -47,7 +48,7 @@ function Shell() {
 const router = createBrowserRouter([{
   element: <Shell />,
   children: [
-    { path: '/', element: <Dashboard /> }, { path: '/map', element: <DataMap /> }, { path: '/innovations', element: <Innovations /> }, { path: '/estimate', element: <Estimation /> },
+    { path: '/', element: <Dashboard /> }, { path: '/map', element: <DataMap /> }, { path: '/innovations', element: <Innovations /> }, { path: '/security', element: <Security /> }, { path: '/estimate', element: <Estimation /> },
     { path: '/case-study', element: <CaseStudy /> }, { path: '/methodology', element: <Methodology /> }, { path: '/data-sources', element: <DataSources /> },
     { path: '/roadmap', element: <Roadmap /> }, { path: '/about', element: <About /> }, { path: '*', element: <Dashboard /> },
   ],

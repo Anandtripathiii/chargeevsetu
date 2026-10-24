@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Clock, Flag, IndianRupee, Navigation, Plug, Star, ThumbsDown, ThumbsUp, X, Zap } from 'lucide-react'
 import { toast } from 'sonner'
-import { addReport, addReview, listReviews, type ReportKind, type Review } from '../lib/backend'
+import { addReport, addReview, flagReview, listReviews, type ReportKind, type Review } from '../lib/backend'
 import { directions, type Station } from '../lib/stations'
 import { Modal, useRequireLogin } from './Account'
 
@@ -104,9 +104,11 @@ function ReviewGroup({ list, title, Icon, cls }: { list: Review[]; title: string
 }
 
 function ReviewItem({ r }: { r: Review }) {
+  const requireLogin = useRequireLogin()
   return (
     <div className="py-2 border-b border-line text-sm">
-      <div className="flex items-center gap-2"><Stars value={r.rating} size={12} /><span className="font-medium">{r.author}</span><span className="text-xs text-muted ml-auto">{new Date(r.created_at).toLocaleDateString('en-IN')}</span></div>
+      <div className="flex items-center gap-2"><Stars value={r.rating} size={12} /><span className="font-medium">{r.author}</span><span className="text-xs text-muted ml-auto">{new Date(r.created_at).toLocaleDateString('en-IN')}</span>
+        <button className="text-[11px] text-muted hover:text-crit" title="Report this review" onClick={() => requireLogin(() => flagReview(r.id).then(() => toast.success('Thanks. Our team will check this review.'), (e) => toast.error(e.message)))}>Report</button></div>
       {r.body && <p className="mt-1 text-muted">{r.body}</p>}
     </div>
   )

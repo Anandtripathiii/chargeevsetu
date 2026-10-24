@@ -237,6 +237,13 @@ export async function addReview(station_id: string, rating: number, body: string
   const { error } = await (await sb()).from('reviews').insert(r)
   if (error) throw new Error(/duplicate|unique/i.test(error.message) ? 'You have already reviewed this station.' : friendly(error))
 }
+/** Flag a review for the moderators (once per user per review). */
+export async function flagReview(review_id: string) {
+  need()
+  if (DEMO) return
+  const { error } = await (await sb()).from('review_flags').insert({ review_id })
+  if (error && !/duplicate|unique/i.test(error.message)) throw new Error(friendly(error))
+}
 export async function addReport(station_id: string, kind: ReportKind, note: string, photo?: File | null) {
   const u = need()
   ;({ station_id, kind, note } = check(V.report, { station_id, kind, note }))
@@ -262,7 +269,18 @@ export function useHomeChargers(): HomeCharger[] | null {
     let live = true, off = () => {}
     sb().then(async (c) => {
       // public columns only, max 100 rows per request
-      const load = async () => { const { data, error } = await c.from('home_chargers').select('id, host_id, host_name, title, area, lon, lat, type, power_kw, connector, price_kwh, hours, status, verified, photos, created_at').order('created_at', { ascending: false }).range(0, 99); if (error) setServiceDown(true); if (live) setList((data ?? []) as HomeCharger[]) }
+      // public listings come from the safe view (no host id, no address); my own chargers from the table (RLS: host only)
+      const load = async () => {
+        const COLS = 'id, host_id, host_name, title, area, lon, lat, type, power_kw, connector, price_kwh, hours, status, verified, photos, created_at'
+        let pub = await c.from('home_chargers_public').select('*').order('created_at', { ascending: false }).range(0, 99)
+        if (pub.error) pub = await c.from('home_chargers').select(COLS).order('created_at', { ascending: false }).range(0, 99) // view not migrated yet
+        const mine = current ? await c.from('home_chargers').select(COLS).eq('host_id', current.id).range(0, 99) : { data: [] }
+        setServiceDown(!!pub.error && /fetch|network|50\d/i.test(pub.error.message))
+        const byId = new Map<string, HomeCharger>()
+        for (const r of (pub.data ?? []) as HomeCharger[]) byId.set(r.id, { ...r, host_id: r.host_id ?? '' })
+        for (const r of (mine.data ?? []) as HomeCharger[]) byId.set(r.id, r)
+        if (live) setList([...byId.values()])
+      }
       await load()
       // unique name per hook: removeChannel must not close another listener's channel
       const ch = c.channel(`home_chargers-${uid()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'home_chargers' }, load).subscribe()
